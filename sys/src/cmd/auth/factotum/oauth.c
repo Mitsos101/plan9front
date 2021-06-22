@@ -6,6 +6,13 @@ enum {
 	Httppost,
 };
 
+
+typedef struct State State;
+struct State
+{
+	Key *key;
+};
+
 enum
 {
 	HaveToken,
