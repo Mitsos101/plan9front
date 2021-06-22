@@ -144,3 +144,58 @@ oauthinit(Proto *p, Fsstate *fss)
 	fss->phase = HaveToken;
 	return RpcOk;
 }
+
+static void
+oauthclose(Fsstate *fss)
+{
+	State *s;
+
+	s = fss->ps;
+	if(s->key)
+		closekey(s->key);
+	free(s);
+}
+
+static int
+oauthread(Fsstate *fss, void *va, uint *n)
+{
+	int m;
+	char buf[500];
+	char *accesstoken;
+	State *s;
+
+	s = fss->ps;
+	switch(fss->phase){
+	default:
+		return phaseerror(fss, "read");
+
+	case HavePass:
+		accesstoken = _strfindattr(s->key->privattr, "!accesstoken");
+		if(accesstoken == nil)
+			return failure(fss, "oauthread cannot happen");
+		snprint(buf, sizeof buf, "%q", accesstoken);
+		m = strlen(buf);
+		if(m > *n)
+			return toosmall(fss, m);
+		*n = m;
+		memmove(va, buf, m);
+		return RpcOk;
+	}
+}
+
+static int
+oauthwrite(Fsstate *fss, void*, uint)
+{
+	return phaseerror(fss, "write");
+}
+
+Proto pass =
+{
+.name=		"oauth",
+.init=		oauthinit,
+.write=		oauthwrite,
+.read=		oauthread,
+.close=		oauthclose,
+.addkey=		replacekey,
+.keyprompt=	"issuer? clientid? !clientsecret? !accesstoken? !refreshtoken?",
+};
