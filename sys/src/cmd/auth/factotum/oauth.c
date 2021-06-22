@@ -1,4 +1,5 @@
 #include "dat.h"
+#include <httpd.h>
 
 
 enum {
@@ -84,7 +85,7 @@ dohttp(int meth, char *url, HSPairs* sp)
 
 	switch(meth){
 		case Httpget:
-			if(fprint(ctlfd, "url %s%P", url, sp) < 0){
+			if(fprint(ctlfd, "url %s?%P", url, sp) < 0){
 				werrstr("url ctl write: %r");
 				goto out;
 			}
@@ -124,6 +125,31 @@ dohttp(int meth, char *url, HSPairs* sp)
 	return s;
 }
 
+int
+refresh(Key *k) {
+	char *issuer, *clientid, *clientsecret, *refreshtoken;
+
+
+	if((issuer = _strfindattr(k->attr, "issuer")) == nil){
+		werrstr("issuer missing");
+		return -1;
+	}
+	if((clientid = _strfindattr(k->attr, "clientid")) == nil){
+		werrstr("clientid missing");
+		return -1;
+	}
+	if((clientsecret = _strfindattr(k->attr, "clientsecret")) == nil){
+		werrstr("clientsecret missing");
+		return -1;
+	}
+	refreshtoken = _strfindattr(k->privattr, "!refreshtoken");
+	if(refreshtoken == nil)
+		return 0;
+	// todo
+	return 0;
+}
+
+
 static int
 oauthinit(Proto *p, Fsstate *fss)
 {
@@ -137,6 +163,7 @@ oauthinit(Proto *p, Fsstate *fss)
 	ret = findkey(&k, mkkeyinfo(&ki, fss, nil), "%s", p->keyprompt);
 	if(ret != RpcOk)
 		return ret;
+	refresh(k);
 	setattrs(fss->attr, k->attr);
 	s = emalloc(sizeof(*s));
 	s->key = k;
