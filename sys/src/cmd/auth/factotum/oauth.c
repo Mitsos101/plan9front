@@ -6,6 +6,17 @@ enum {
 	Httppost,
 };
 
+enum
+{
+	HaveToken,
+	Maxphase,
+};
+
+static char *phasenames[Maxphase] =
+{
+[HaveToken]	"HaveToken",
+};
+
 int
 hspairsfmt(Fmt *f)
 {
@@ -123,6 +134,6 @@ oauthinit(Proto *p, Fsstate *fss)
 	s = emalloc(sizeof(*s));
 	s->key = k;
 	fss->ps = s;
-	fss->phase = HavePass;
+	fss->phase = HaveToken;
 	return RpcOk;
 }
