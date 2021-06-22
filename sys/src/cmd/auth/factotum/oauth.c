@@ -142,8 +142,7 @@ refresh(Key *k) {
 		werrstr("clientsecret missing");
 		return -1;
 	}
-	refreshtoken = _strfindattr(k->privattr, "!refreshtoken");
-	if(refreshtoken == nil)
+	if((refreshtoken = _strfindattr(k->privattr, "!refreshtoken")) == nil)
 		return 0;
 	// todo
 	return 0;
