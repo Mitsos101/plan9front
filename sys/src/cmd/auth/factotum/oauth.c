@@ -169,7 +169,7 @@ oauthread(Fsstate *fss, void *va, uint *n)
 	default:
 		return phaseerror(fss, "read");
 
-	case HavePass:
+	case HaveToken:
 		accesstoken = _strfindattr(s->key->privattr, "!accesstoken");
 		if(accesstoken == nil)
 			return failure(fss, "oauthread cannot happen");
