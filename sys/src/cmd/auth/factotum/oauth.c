@@ -1,5 +1,6 @@
 #include "dat.h"
 #include <httpd.h>
+#include <json.h>
 
 
 enum {
@@ -127,7 +128,9 @@ dohttp(int meth, char *url, HSPairs* sp)
 
 int
 refresh(Key *k) {
-	char *issuer, *clientid, *clientsecret, *refreshtoken;
+	char buf[1024], *issuer, *clientid, *clientsecret, *refreshtoken;
+	char *resp;
+	JSON *json;
 
 
 	if((issuer = _strfindattr(k->attr, "issuer")) == nil){
@@ -144,6 +147,16 @@ refresh(Key *k) {
 	}
 	if((refreshtoken = _strfindattr(k->privattr, "!refreshtoken")) == nil)
 		return 0;
+
+	snprint(buf, sizeof buf, "%s%s", issuer, "/.well-known/openid-configuration");
+	if((resp = dohttp(Httpget, buf, nil)) == nil){
+		werrstr("dohttp: %r");
+		return -1;
+	}
+	if((json = jsonparse(resp)) == nil){
+		werrstr("jsonparse: %r");
+		return -1;
+	}
 	// todo
 	return 0;
 }
