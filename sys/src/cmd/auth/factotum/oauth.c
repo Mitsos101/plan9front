@@ -145,8 +145,10 @@ refresh(Key *k) {
 		werrstr("clientsecret missing");
 		return -1;
 	}
-	if((refreshtoken = _strfindattr(k->privattr, "!refreshtoken")) == nil)
+	if((refreshtoken = _strfindattr(k->privattr, "!refreshtoken")) == nil){
+		/* cannot refresh */
 		return 0;
+	}
 
 	snprint(buf, sizeof buf, "%s%s", issuer, "/.well-known/openid-configuration");
 	if((resp = dohttp(Httpget, buf, nil)) == nil){
@@ -175,7 +177,9 @@ oauthinit(Proto *p, Fsstate *fss)
 	ret = findkey(&k, mkkeyinfo(&ki, fss, nil), "%s", p->keyprompt);
 	if(ret != RpcOk)
 		return ret;
-	refresh(k);
+	if(refresh(k) < 0){
+		return failure(fss, "refresh: %r");
+	}
 	setattrs(fss->attr, k->attr);
 	s = emalloc(sizeof(*s));
 	s->key = k;
