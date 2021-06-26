@@ -97,7 +97,6 @@ dohttp(int meth, char *url, PArray *pa)
 	char buf[1024], *mtpt, *s;
 	int ctlfd, fd, conn, n;
 
-	ctlfd = -1;
 	fd = -1;
 	mtpt = "/mnt/web";
 	snprint(buf, sizeof buf, "%s/clone", mtpt);
@@ -230,7 +229,7 @@ refresh(Key *k) {
 	jsonfree(j);
 
 	pa.n = 4;
-	pa.a = p;
+	pa.p = p;
 	p[3] = (Pair){"grant_type", "refresh_token"};
 	for(i = 0; i < nelem(k1); i++){
 		s = k1[i];
