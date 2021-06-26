@@ -48,12 +48,12 @@ parrayfmt(Fmt *f)
 	PArray *pa;
 	int i;
 
-	pa = va_args(f->args, PArray*);
+	pa = va_arg(f->args, PArray*);
 	if(pa == nil)
 		return 0;
-	for(i = 0; i < pa.n; i++){
+	for(i = 0; i < pa->n; i++){
 		if(i != 0) fmtprint(f, "&");
-		fmtprint(f, "%P", pa.p[i]);
+		fmtprint(f, "%P", pa->p[i]);
 	}
 
 	return 0;
@@ -64,7 +64,7 @@ pairfmt(Fmt *f)
 {
 	Pair *p;
 
-	fmtprint(f, "%U=%U", p.s, p.t);
+	fmtprint(f, "%U=%U", p->s, p->t);
 
 	return 0;
 }
@@ -76,7 +76,7 @@ readall(int fd)
 	int n, tot;
 
 	s = nil;
-	for(tot = 0; (n = read(f, buf, (long)sizeof buf)) > 0; tot += n){
+	for(tot = 0; (n = read(fd, buf, (long)sizeof buf)) > 0; tot += n){
 		s = erealloc(s, tot + n + 1);
 		memcpy(s + tot, buf, n);
 	}
