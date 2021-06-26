@@ -2,8 +2,6 @@
 #include <httpd.h>
 #include <json.h>
 
-#define nelem(x) ((sizeof(x))/(sizeof(x[0]))
-
 static char* k1[] = {"client_id", "!client_secret", "!refresh_token"};
 static char* k2[] = {"!access_token", "!id_token", "!refresh_token", "scope", "token_type"};
 
