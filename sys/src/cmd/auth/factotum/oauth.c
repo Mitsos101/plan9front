@@ -53,7 +53,7 @@ parrayfmt(Fmt *f)
 		return 0;
 	for(i = 0; i < pa->n; i++){
 		if(i != 0) fmtprint(f, "&");
-		fmtprint(f, "%P", pa->p[i]);
+		fmtprint(f, "%Γ", pa->p[i]);
 	}
 
 	return 0;
@@ -97,6 +97,7 @@ dohttp(int meth, char *url, PArray *pa)
 	char buf[1024], *mtpt, *s;
 	int ctlfd, fd, conn, n;
 
+	s = nil;
 	fd = -1;
 	mtpt = "/mnt/web";
 	snprint(buf, sizeof buf, "%s/clone", mtpt);
@@ -117,7 +118,7 @@ dohttp(int meth, char *url, PArray *pa)
 
 	switch(meth){
 		case Httpget:
-			if(fprint(ctlfd, "url %s?%L", url, pa) < 0){
+			if(fprint(ctlfd, "url %s?%Δ", url, pa) < 0){
 				werrstr("url ctl write: %r");
 				goto out;
 			}
@@ -128,7 +129,7 @@ dohttp(int meth, char *url, PArray *pa)
 				werrstr("open %s: %r", buf);
 				goto out;
 			}
-			if(fprint(fd, "%L", pa) < 0){
+			if(fprint(fd, "%Δ", pa) < 0){
 				werrstr("post write failed: %r");
 				goto out;
 			}
@@ -300,8 +301,8 @@ oauthinit(Proto *p, Fsstate *fss)
 	State *s;
 
 	fmtinstall('U', hurlfmt);
-	fmtinstall('P', pairfmt);
-	fmtinstall('L', parrayfmt);
+	fmtinstall('Γ', pairfmt);
+	fmtinstall('Δ', parrayfmt);
 	ret = findkey(&k, mkkeyinfo(&ki, fss, nil), "%s", p->keyprompt);
 	if(ret != RpcOk)
 		return ret;
@@ -366,7 +367,7 @@ oauthwrite(Fsstate *fss, void*, uint)
 	return phaseerror(fss, "write");
 }
 
-Proto pass =
+Proto oauth =
 {
 .name=		"oauth",
 .init=		oauthinit,
