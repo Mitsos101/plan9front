@@ -44,7 +44,7 @@ static char *phasenames[Maxphase] =
 [HaveToken]	"HaveToken",
 };
 
-int
+static int
 parrayfmt(Fmt *f)
 {
 	PArray *pa;
@@ -61,7 +61,7 @@ parrayfmt(Fmt *f)
 	return 0;
 }
 
-int
+static int
 pairfmt(Fmt *f)
 {
 	Pair *p;
@@ -157,7 +157,7 @@ dohttp(int meth, char *url, PArray *pa)
 	return s;
 }
 
-JSON*
+static JSON*
 jsonhttp(int meth, char *url, PArray *pa){
 	char *resp;
 	JSON *j;
@@ -190,7 +190,7 @@ sendkey(Key *k)
 	return rv;
 }
 
-int
+static int
 refresh(Key *k) {
 	char buf[1024], *issuer, *te, *s;
 	long exptime;
