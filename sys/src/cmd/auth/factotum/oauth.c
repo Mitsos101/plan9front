@@ -2,6 +2,9 @@
 #include <httpd.h>
 #include <json.h>
 
+#pragma varargck	type	"P"	Pair*
+#pragma varargck	type	"L"	PArray*
+
 static char* k1[] = {"client_id", "!client_secret", "!refresh_token"};
 static char* k2[] = {"!access_token", "!id_token", "!refresh_token", "scope", "token_type"};
 
