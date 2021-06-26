@@ -326,7 +326,7 @@ static int
 oauthread(Fsstate *fss, void *va, uint *n)
 {
 	int m;
-	char buf[500];
+	char buf[4096];
 	char *accesstoken;
 	State *s;
 
