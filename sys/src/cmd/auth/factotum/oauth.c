@@ -270,13 +270,13 @@ refresh(Key *k) {
 			jsonfree(j);
 			return -1;
 		}
-		// todo: set attribute s in a to t->s
+		/* todo: set attribute s in a to t->s */
 	}
 
 	t = jsonbyname(j, "expires_in");
 	if(t != nil && t->t == JSONNumber){
 		exptime = time(0) + (long)t->n;
-		// todo: copy exptime to k->attr
+		/* todo: copy exptime to k->attr */
 	}
 
 	jsonfree(j);
