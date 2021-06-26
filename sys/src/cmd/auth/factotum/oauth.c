@@ -8,6 +8,20 @@ enum {
 	Httppost,
 };
 
+typedef struct Pair Pair;
+struct Pair
+{
+	char *s;
+	char *t;
+};
+
+typedef struct PArray PArray;
+struct PArray
+{
+	int n;
+	Pair *p;
+};
+
 
 typedef struct State State;
 struct State
@@ -27,15 +41,30 @@ static char *phasenames[Maxphase] =
 };
 
 int
-hspairsfmt(Fmt *f)
+parrayfmt(Fmt *f)
 {
-	HSPairs *sp;
+	PArray *pa;
+	int i;
 
-	for(sp = va_arg(f->args, HSPairs*); sp != nil; sp = sp->next){
-		fmtprint(fmt, "%U=%U", sp->s, sp->t);
-		if(sp->next != nil)
-			fmtprint(fmt, "&");
+	pa = va_args(f->args, PArray*);
+	if(pa == nil)
+		return 0;
+	for(i = 0; i < pa.n; i++){
+		if(i != 0) fmtprint(f, "&");
+		fmtprint(f, "%P", pa.p[i]);
 	}
+
+	return 0;
+}
+
+int
+pairfmt(Fmt *f)
+{
+	Pair *p;
+
+	fmtprint(f, "%U=%U", p.s, p.t);
+
+	return 0;
 }
 
 static char*
@@ -60,7 +89,7 @@ readall(int fd)
 }
 
 static char*
-dohttp(int meth, char *url, HSPairs* sp)
+dohttp(int meth, char *url, PArray *pa)
 {
 	char buf[1024], *mtpt, *s;
 	int ctlfd, fd, conn, n;
@@ -86,7 +115,7 @@ dohttp(int meth, char *url, HSPairs* sp)
 
 	switch(meth){
 		case Httpget:
-			if(fprint(ctlfd, "url %s?%P", url, sp) < 0){
+			if(fprint(ctlfd, "url %s?%A", url, pa) < 0){
 				werrstr("url ctl write: %r");
 				goto out;
 			}
@@ -97,7 +126,7 @@ dohttp(int meth, char *url, HSPairs* sp)
 				werrstr("open %s: %r", buf);
 				goto out;
 			}
-			if(fprint(fd, "%P", sp) < 0){
+			if(fprint(fd, "%A", pa) < 0){
 				werrstr("post write failed: %r");
 				goto out;
 			}
@@ -111,9 +140,7 @@ dohttp(int meth, char *url, HSPairs* sp)
 		goto out;
 	}
 
-	s = readall(fd);
-
-	if(s == nil){
+	if((s = readall(fd)) == nil){
 		werrstr("readall: %r");
 		goto out;
 	}
@@ -126,11 +153,35 @@ dohttp(int meth, char *url, HSPairs* sp)
 	return s;
 }
 
+JSON*
+jsonhttp(int meth, char *url, PArray *pa){
+	char *resp;
+	JSON *j;
+
+	if((resp = dohttp(meth, url, pa)) == nil){
+		werrstr("dohttp: %r");
+		return nil;
+	}
+
+	if((j = jsonparse(resp)) == nil){
+		werrstr("jsonparse: %r");
+		return nil;
+	}
+
+	return j;
+}
+
+
 int
 refresh(Key *k) {
 	char buf[1024], *issuer, *clientid, *clientsecret, *refreshtoken;
-	char *resp;
-	JSON *json;
+	char *newrtoken, *accesstoken, *scope, *idtoken;
+	time_t exptime;
+	Pair p[4];
+	PArray pa;
+	JSON *j, *t;
+	char *te;
+
 
 
 	if((issuer = _strfindattr(k->attr, "issuer")) == nil){
@@ -151,15 +202,42 @@ refresh(Key *k) {
 	}
 
 	snprint(buf, sizeof buf, "%s%s", issuer, "/.well-known/openid-configuration");
-	if((resp = dohttp(Httpget, buf, nil)) == nil){
-		werrstr("dohttp: %r");
+
+	if((j = jsonhttp(Httpget, buf, nil)) == nil){
+		werrstr("jsonhttp: %r");
 		return -1;
 	}
-	if((json = jsonparse(resp)) == nil){
-		werrstr("jsonparse: %r");
+	if((t = jsonbyname(j, "token_endpoint")) == nil){
+		werrstr("jsonbyname: %r");
+		jsonfree(j);
 		return -1;
 	}
-	// todo
+	if(t->t != JSONString){
+		werrstr("token endpoint is not a string");
+		jsonfree(j);
+		return -1;
+	}
+	if((te = strdup(t->s)) == nil){
+		werrstr("strdup: %r");
+		jsonfree(j);
+		return -1;
+	}
+	jsonfree(j);
+
+	pa.n = 4;
+	pa.a = p;
+	p[0] = (Pair){"grant_type", "refresh_token"};
+	p[1] = (Pair){"client_id", clientid};
+	p[2] = (Pair){"client_secret", clientsecret};
+	p[3] = (Pair){"refresh_token", refreshtoken};
+
+	if((j = jsonhttp(Httppost, te, &pa)) == nil){
+		werrstr("jsonhttp: %r");
+		return -1;
+	}
+
+	/* todo: copy keys */
+
 	return 0;
 }
 
@@ -173,7 +251,8 @@ oauthinit(Proto *p, Fsstate *fss)
 	State *s;
 
 	fmtinstall('U', hurlfmt);
-	fmtinstall('P', hspairsfmt);
+	fmtinstall('P', pairfmt);
+	fmtinstall('A', parrayfmt);
 	ret = findkey(&k, mkkeyinfo(&ki, fss, nil), "%s", p->keyprompt);
 	if(ret != RpcOk)
 		return ret;
@@ -214,9 +293,15 @@ oauthread(Fsstate *fss, void *va, uint *n)
 
 	case HaveToken:
 		accesstoken = _strfindattr(s->key->privattr, "!accesstoken");
-		if(accesstoken == nil)
+		idtoken = _strfindattr(s->key->privattr, "!idtoken");
+		if(accesstoken == nil && idtoken == nil)
 			return failure(fss, "oauthread cannot happen");
-		snprint(buf, sizeof buf, "%q", accesstoken);
+		if(accesstoken == nil)
+			snprint(buf, sizeof buf, "idtoken=%q", idtoken);
+		if(idtoken == nil)
+			snprint(buf, sizeof buf, "accesstoken=%q", accesstoken);
+		if(accesstoken != nil && idtoken != nil)
+			snprint(buf, sizeof buf, "idtoken=%q accesstoken=%q", idtoken, accesstoken);
 		m = strlen(buf);
 		if(m > *n)
 			return toosmall(fss, m);
