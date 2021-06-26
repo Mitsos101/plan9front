@@ -64,6 +64,7 @@ pairfmt(Fmt *f)
 {
 	Pair *p;
 
+	p = va_arg(f->args, Pair*);
 	fmtprint(f, "%U=%U", p->s, p->t);
 
 	return 0;
@@ -117,7 +118,7 @@ dohttp(int meth, char *url, PArray *pa)
 
 	switch(meth){
 		case Httpget:
-			if(fprint(ctlfd, "url %s?%A", url, pa) < 0){
+			if(fprint(ctlfd, "url %s?%L", url, pa) < 0){
 				werrstr("url ctl write: %r");
 				goto out;
 			}
@@ -128,7 +129,7 @@ dohttp(int meth, char *url, PArray *pa)
 				werrstr("open %s: %r", buf);
 				goto out;
 			}
-			if(fprint(fd, "%A", pa) < 0){
+			if(fprint(fd, "%L", pa) < 0){
 				werrstr("post write failed: %r");
 				goto out;
 			}
@@ -276,8 +277,9 @@ refresh(Key *k) {
 	t = jsonbyname(j, "expires_in");
 	if(t != nil && t->t == JSONNumber){
 		exptime = time(0) + (long)t->n;
-		b = _mkattr(AttrNameval, s, t->s, nil);
-		setattrs(a, b);
+		snprint(buf, sizeof buf, "%ld", exptime);
+		b = _mkattr(AttrNameval, "exptime", buf, nil);
+		setattrs(k->attr, b);
 		_freeattr(b);
 	}
 
@@ -300,7 +302,7 @@ oauthinit(Proto *p, Fsstate *fss)
 
 	fmtinstall('U', hurlfmt);
 	fmtinstall('P', pairfmt);
-	fmtinstall('A', parrayfmt);
+	fmtinstall('L', parrayfmt);
 	ret = findkey(&k, mkkeyinfo(&ki, fss, nil), "%s", p->keyprompt);
 	if(ret != RpcOk)
 		return ret;
@@ -331,7 +333,7 @@ oauthread(Fsstate *fss, void *va, uint *n)
 {
 	int m;
 	char buf[4096];
-	char *accesstoken;
+	char *accesstoken, *idtoken;
 	State *s;
 
 	s = fss->ps;
