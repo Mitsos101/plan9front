@@ -195,7 +195,7 @@ refresh(Key *k) {
 	Pair p[4];
 	PArray pa;
 	JSON *j, *t;
-	Attr *a;
+	Attr *a, *b;
 	int i;
 
 	if((s = _strfindattr(k->attr, "exptime")) != nil && atol(s) >= time(0))
@@ -268,13 +268,17 @@ refresh(Key *k) {
 			jsonfree(j);
 			return -1;
 		}
-		/* todo: set attribute s in a to t->s */
+		b = _mkattr(AttrNameval, s, t->s, nil);
+		setattrs(a, b);
+		_freeattr(b);
 	}
 
 	t = jsonbyname(j, "expires_in");
 	if(t != nil && t->t == JSONNumber){
 		exptime = time(0) + (long)t->n;
-		/* todo: copy exptime to k->attr */
+		b = _mkattr(AttrNameval, s, t->s, nil);
+		setattrs(a, b);
+		_freeattr(b);
 	}
 
 	jsonfree(j);
