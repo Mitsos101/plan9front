@@ -176,7 +176,7 @@ int
 refresh(Key *k) {
 	char buf[1024], *issuer, *clientid, *clientsecret, *refreshtoken;
 	char *newrtoken, *accesstoken, *scope, *idtoken;
-	time_t exptime;
+	long exptime;
 	Pair p[4];
 	PArray pa;
 	JSON *j, *t;
