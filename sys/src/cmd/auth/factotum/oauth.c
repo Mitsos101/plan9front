@@ -2,6 +2,10 @@
 #include <httpd.h>
 #include <json.h>
 
+#define nelem(x) ((sizeof(x))/(sizeof(x[0]))
+
+static char* k1[] = {"client_id", "!client_secret", "!refresh_token"};
+static char* k2[] = {"!access_token", "!id_token", "!refresh_token", "scope", "token_type"};
 
 enum {
 	Httpget,
@@ -171,36 +175,38 @@ jsonhttp(int meth, char *url, PArray *pa){
 	return j;
 }
 
+static int
+sendkey(Key *k)
+{
+	int fd, rv;
+	char buf[16384];
+
+	fd = open("/mnt/factotum/ctl", ORDWR);
+	if(fd < 0)
+		sysfatal("opening /mnt/factotum/ctl: %r");
+	rv = fprint(fd, "key %A %A\n", k->attr, k->privattr);
+	read(fd, buf, sizeof buf);
+	close(fd);
+	return rv;
+}
 
 int
 refresh(Key *k) {
-	char buf[1024], *issuer, *clientid, *clientsecret, *refreshtoken;
-	char *newrtoken, *accesstoken, *scope, *idtoken;
+	char buf[1024], *issuer, *te, *s;
 	long exptime;
 	Pair p[4];
 	PArray pa;
 	JSON *j, *t;
-	char *te;
+	Attr *a;
+	int i;
 
-
+	if((s = _strfindattr(k->attr, "exptime")) != nil && atol(s) >= time(0))
+		return 0;
 
 	if((issuer = _strfindattr(k->attr, "issuer")) == nil){
 		werrstr("issuer missing");
 		return -1;
 	}
-	if((clientid = _strfindattr(k->attr, "clientid")) == nil){
-		werrstr("clientid missing");
-		return -1;
-	}
-	if((clientsecret = _strfindattr(k->attr, "clientsecret")) == nil){
-		werrstr("clientsecret missing");
-		return -1;
-	}
-	if((refreshtoken = _strfindattr(k->privattr, "!refreshtoken")) == nil){
-		/* cannot refresh */
-		return 0;
-	}
-
 	snprint(buf, sizeof buf, "%s%s", issuer, "/.well-known/openid-configuration");
 
 	if((j = jsonhttp(Httpget, buf, nil)) == nil){
@@ -226,18 +232,58 @@ refresh(Key *k) {
 
 	pa.n = 4;
 	pa.a = p;
-	p[0] = (Pair){"grant_type", "refresh_token"};
-	p[1] = (Pair){"client_id", clientid};
-	p[2] = (Pair){"client_secret", clientsecret};
-	p[3] = (Pair){"refresh_token", refreshtoken};
+	p[3] = (Pair){"grant_type", "refresh_token"};
+	for(i = 0; i < nelem(k1); i++){
+		s = k1[i];
+		if(s[0] == '!'){
+			a = k->privattr;
+			p[i].s = s + 1;
+		} else {
+			a = k->attr;
+			p[i].s = s;
+		}
+		if((p[i].t = _strfindattr(a, s)) == nil){
+			werrstr("%s not found", s);
+			free(te);
+			return -1;
+		}
+	}
 
 	if((j = jsonhttp(Httppost, te, &pa)) == nil){
 		werrstr("jsonhttp: %r");
+		free(te);
 		return -1;
 	}
+	free(te);
 
-	/* todo: copy keys */
+	for(i = 0; i < nelem(k2); i++){
+		s = k2[i];
+		if(s[0] == '!'){
+			a = k->privattr;
+			t = jsonbyname(j, s + 1);
+		} else {
+			a = k->attr;
+			t = jsonbyname(j, s);
+		}
+		if(t != nil && t->t != JSONString){
+			werrstr("%s is not a string, s);
+			jsonfree(j);
+			return -1;
+		}
+		// todo: set attribute s in a to t->s
+	}
 
+	t = jsonbyname(j, "expires_in");
+	if(t != nil && t->t == JSONNumber){
+		exptime = time(0) + (long)t->n;
+		// todo: copy exptime to k->attr
+	}
+
+	jsonfree(j);
+	if(sendkey(k) < 0){
+		werrstr("sendkey: %r");
+		return -1;
+	}
 	return 0;
 }
 
@@ -292,16 +338,16 @@ oauthread(Fsstate *fss, void *va, uint *n)
 		return phaseerror(fss, "read");
 
 	case HaveToken:
-		accesstoken = _strfindattr(s->key->privattr, "!accesstoken");
-		idtoken = _strfindattr(s->key->privattr, "!idtoken");
+		accesstoken = _strfindattr(s->key->privattr, "!access_token");
+		idtoken = _strfindattr(s->key->privattr, "!id_token");
 		if(accesstoken == nil && idtoken == nil)
 			return failure(fss, "oauthread cannot happen");
 		if(accesstoken == nil)
-			snprint(buf, sizeof buf, "idtoken=%q", idtoken);
+			snprint(buf, sizeof buf, "id_token=%q", idtoken);
 		if(idtoken == nil)
-			snprint(buf, sizeof buf, "accesstoken=%q", accesstoken);
+			snprint(buf, sizeof buf, "access_token=%q", accesstoken);
 		if(accesstoken != nil && idtoken != nil)
-			snprint(buf, sizeof buf, "idtoken=%q accesstoken=%q", idtoken, accesstoken);
+			snprint(buf, sizeof buf, "id_token=%q access_token=%q", idtoken, accesstoken);
 		m = strlen(buf);
 		if(m > *n)
 			return toosmall(fss, m);
