@@ -2,9 +2,6 @@
 #include <httpd.h>
 #include <json.h>
 
-#pragma varargck	type	"P"	Pair*
-#pragma varargck	type	"L"	PArray*
-
 typedef struct Grant Grant;
 struct Grant
 {
@@ -67,7 +64,7 @@ parrayfmt(Fmt *f)
 		return 0;
 	for(i = 0; i < pa->n; i++){
 		if(i != 0) fmtprint(f, "&");
-		fmtprint(f, "%P", &(pa->p[i]));
+		fmtprint(f, "%P", &pa->p[i]);
 	}
 
 	return 0;
@@ -410,3 +407,6 @@ Proto oauth =
 .addkey=		replacekey,
 .keyprompt=	"issuer? clientid? !clientsecret?",
 };
+
+#pragma varargck	type	"P"	Pair*
+#pragma varargck	type	"L"	PArray*
