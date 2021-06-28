@@ -10,8 +10,8 @@ struct Grant
 };
 
 static Grant grants[] = {
-							{"urn:ietf:params:oauth:grant-type:device_code", "device_code"},
 							{"refresh_token", "!refresh_token"},
+							{"urn:ietf:params:oauth:grant-type:device_code", "device_code"},
 						};
 static char* cattrs[] = {"client_id", "!client_secret"};
 static char* jattrs[] = {"!access_token", "!id_token", "!refresh_token", "scope", "token_type"};
