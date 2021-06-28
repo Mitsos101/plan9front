@@ -67,7 +67,7 @@ parrayfmt(Fmt *f)
 		return 0;
 	for(i = 0; i < pa->n; i++){
 		if(i != 0) fmtprint(f, "&");
-		fmtprint(f, "%P", &pa->p[i]);
+		fmtprint(f, "%P", &(pa->p[i]));
 	}
 
 	return 0;
