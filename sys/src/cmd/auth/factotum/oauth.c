@@ -252,7 +252,9 @@ refresh(Key *k) {
 			a = k->attr;
 			t = jsonbyname(j, s);
 		}
-		if(t != nil && t->t != JSONString){
+		if(t == nil)
+			continue;
+		if(t->t != JSONString){
 			werrstr("%s is not a string", s);
 			jsonfree(j);
 			return -1;
