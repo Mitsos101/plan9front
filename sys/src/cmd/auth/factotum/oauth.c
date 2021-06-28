@@ -5,8 +5,19 @@
 #pragma varargck	type	"P"	Pair*
 #pragma varargck	type	"L"	PArray*
 
-static char* k1[] = {"client_id", "!client_secret", "!refresh_token"};
-static char* k2[] = {"!access_token", "!id_token", "!refresh_token", "scope", "token_type"};
+typedef struct Grant Grant;
+struct Grant
+{
+	char *type;
+	char *attr;
+};
+
+static Grant grants[] = {
+						(Grant){"urn:ietf:params:oauth:grant-type:device_code", "device_code"},
+						(Grant){"refresh_token", "!refresh_token"},
+						};
+static char* cattrs[] = {"client_id", "!client_secret"};
+static char* jattrs[] = {"!access_token", "!id_token", "!refresh_token", "scope", "token_type"};
 
 enum {
 	Httpget,
@@ -181,10 +192,11 @@ static int
 refresh(Key *k) {
 	char buf[1024], *issuer, *te, *s;
 	long exptime;
-	Pair p[4];
+	Pair p[nelem(cattrs) + 2];
 	PArray pa;
 	JSON *j, *t;
 	Attr *a, *b;
+	Grant *g;
 	int i;
 
 	if((s = _strfindattr(k->attr, "exptime")) != nil && atol(s) >= time(0))
@@ -217,15 +229,30 @@ refresh(Key *k) {
 	}
 	jsonfree(j);
 
-	pa.n = 4;
-	pa.p = p;
-	p[3] = (Pair){"grant_type", "refresh_token"};
-	for(i = 0; i < nelem(k1); i++){
-		s = k1[i];
+	for(i = 0; i < nelem(grants); i++){
+		s = grants[i].attr;
+		a = s[0] == '!' ? k->privattr : k->attr;
+		if(_strfindattr(a, s) != nil)
+			break;
+	}
+
+	if(i == nelem(grants)){
+		werrstr("no way to get key");
+		free(te);
+		return -1;
+	}
+
+	g = &grants[i];
+
+	for(i = 0; i < nelem(cattrs) + 1; i++){
+		if(i < nelem(cattrs))
+			s = cattrs[i];
+		else if(i == nelem(cattrs))
+			s = g->attr;
 		if(s[0] == '!'){
 			a = k->privattr;
 			p[i].s = s + 1;
-		} else {
+		} else{
 			a = k->attr;
 			p[i].s = s;
 		}
@@ -235,6 +262,9 @@ refresh(Key *k) {
 			return -1;
 		}
 	}
+	p[nelem(cattrs) + 1] = (Pair){"grant_type", g->type};
+	pa.n = nelem(p);
+	pa.p = &p;
 
 	if((j = jsonhttp(Httppost, te, &pa)) == nil){
 		werrstr("jsonhttp: %r");
@@ -243,8 +273,17 @@ refresh(Key *k) {
 	}
 	free(te);
 
-	for(i = 0; i < nelem(k2); i++){
-		s = k2[i];
+	if((t = jsonbyname(j, "error")) != nil){
+		if(t->t == JSONString)
+			werrstr("error getting token: %s", t->s);
+		else
+			werrstr("error getting token");
+		jsonfree(j);
+		return -1;
+	}
+
+	for(i = 0; i < nelem(jattrs); i++){
+		s = jattrs[i];
 		if(s[0] == '!'){
 			a = k->privattr;
 			t = jsonbyname(j, s + 1);
@@ -365,5 +404,5 @@ Proto oauth =
 .read=		oauthread,
 .close=		oauthclose,
 .addkey=		replacekey,
-.keyprompt=	"issuer? clientid? !clientsecret? !accesstoken? !refreshtoken?",
+.keyprompt=	"issuer? clientid? !clientsecret?",
 };
