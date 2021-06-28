@@ -178,21 +178,6 @@ jsonhttp(int meth, char *url, PArray *pa){
 }
 
 static int
-sendkey(Key *k)
-{
-	int fd, rv;
-	char buf[16384];
-
-	fd = open("/mnt/factotum/ctl", ORDWR);
-	if(fd < 0)
-		sysfatal("opening /mnt/factotum/ctl: %r");
-	rv = fprint(fd, "key %A %A\n", k->attr, k->privattr);
-	read(fd, buf, sizeof buf);
-	close(fd);
-	return rv;
-}
-
-static int
 refresh(Key *k) {
 	char buf[1024], *issuer, *te, *s;
 	long exptime;
@@ -287,8 +272,8 @@ refresh(Key *k) {
 	}
 
 	jsonfree(j);
-	if(sendkey(k) < 0){
-		werrstr("sendkey: %r");
+	if(replacekey(k, 0) < 0){
+		werrstr("replacekey: %r");
 		return -1;
 	}
 	return 0;
