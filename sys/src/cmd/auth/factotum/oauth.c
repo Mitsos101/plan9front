@@ -35,6 +35,8 @@ struct PArray
 	Pair *p;
 };
 
+#pragma varargck	type	"P"	Pair*
+#pragma varargck	type	"L"	PArray*
 
 typedef struct State State;
 struct State
@@ -408,5 +410,3 @@ Proto oauth =
 .keyprompt=	"issuer? clientid? !clientsecret?",
 };
 
-#pragma varargck	type	"P"	Pair*
-#pragma varargck	type	"L"	PArray*
