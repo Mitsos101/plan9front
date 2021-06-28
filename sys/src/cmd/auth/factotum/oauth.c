@@ -268,7 +268,7 @@ refresh(Key *k) {
 	}
 	p[nelem(cattrs) + 1] = (Pair){"grant_type", g->type};
 	pa.n = nelem(p);
-	pa.p = &p;
+	pa.p = p;
 
 	if((j = jsonhttp(Httppost, te, &pa)) == nil){
 		werrstr("jsonhttp: %r");
