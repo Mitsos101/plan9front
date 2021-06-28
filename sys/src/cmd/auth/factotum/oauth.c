@@ -208,26 +208,30 @@ refresh(Key *k) {
 	}
 	snprint(buf, sizeof buf, "%s%s", issuer, "/.well-known/openid-configuration");
 
-	if((j = jsonhttp(Httpget, buf, nil)) == nil){
-		werrstr("jsonhttp: %r");
-		return -1;
-	}
-	if((t = jsonbyname(j, "token_endpoint")) == nil){
-		werrstr("jsonbyname: %r");
+	if((te = _strfindattr(k->attr, "token_endpoint")) != nil)
+		te = strdup(te);
+	else{
+		if((j = jsonhttp(Httpget, buf, nil)) == nil){
+			werrstr("jsonhttp: %r");
+			return -1;
+		}
+		if((t = jsonbyname(j, "token_endpoint")) == nil){
+			werrstr("jsonbyname: %r");
+			jsonfree(j);
+			return -1;
+		}
+		if(t->t != JSONString){
+			werrstr("token endpoint is not a string");
+			jsonfree(j);
+			return -1;
+		}
+		if((te = strdup(t->s)) == nil){
+			werrstr("strdup: %r");
+			jsonfree(j);
+			return -1;
+		}
 		jsonfree(j);
-		return -1;
 	}
-	if(t->t != JSONString){
-		werrstr("token endpoint is not a string");
-		jsonfree(j);
-		return -1;
-	}
-	if((te = strdup(t->s)) == nil){
-		werrstr("strdup: %r");
-		jsonfree(j);
-		return -1;
-	}
-	jsonfree(j);
 
 	for(i = 0; i < nelem(grants); i++){
 		s = grants[i].attr;
