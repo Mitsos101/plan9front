@@ -59,28 +59,31 @@ static int
 parrayfmt(Fmt *f)
 {
 	PArray *pa;
-	int i;
+	int i, r;
 
+	r = 0;
 	pa = va_arg(f->args, PArray*);
 	if(pa == nil)
 		return 0;
 	for(i = 0; i < pa->n; i++){
-		if(i != 0) fmtprint(f, "&");
-		fmtprint(f, "%P", &pa->p[i]);
+		if(i != 0) r += fmtprint(f, "&");
+		r += fmtprint(f, "%P", &pa->p[i]);
 	}
 
-	return 0;
+	return r;
 }
 
 static int
 pairfmt(Fmt *f)
 {
 	Pair *p;
+	int r;
 
+	r = 0;
 	p = va_arg(f->args, Pair*);
-	fmtprint(f, "%U=%U", p->s, p->t);
+	r += fmtprint(f, "%U=%U", p->s, p->t);
 
-	return 0;
+	return r;
 }
 
 static char*
