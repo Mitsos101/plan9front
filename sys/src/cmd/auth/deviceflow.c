@@ -402,6 +402,8 @@ main(int argc, char *argv[])
 	if(argc != 3){
 		usage();
 	}
+	fmtinstall('P', pairfmt);
+	fmtinstall('L', parrayfmt);
 	quotefmtinstall();
 	issuer = argv[1];
 	scope = argv[2];
