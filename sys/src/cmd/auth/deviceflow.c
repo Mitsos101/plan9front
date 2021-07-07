@@ -262,7 +262,7 @@ readjson(JSON *j, Elem* e, int n, void *out)
 			return -1;
 		}
 		if(e->type != t->t){
-			werrstr("types for key %s do not match: need %s, got %s", typename[e->type], typename[t->t]);
+			werrstr("types for key %s do not match: need %s, got %s", e->name, typename[e->type], typename[t->t]);
 			jsondestroy(e, n, out);
 			return -1;
 		}
