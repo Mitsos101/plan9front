@@ -12,6 +12,7 @@ TARG=\
 	convkeys\
 	cron\
 	debug\
+	deviceflow\
 	guard.srv\
 	httpauth\
 	keyfs\
