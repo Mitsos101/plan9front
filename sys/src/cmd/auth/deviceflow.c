@@ -354,7 +354,7 @@ deviceflow(char *issuer, char *scope)
 	p[0] = (Pair){"grant_type", "urn:ietf:params:oauth:grant-type:device_code"};
 	p[1] = (Pair){"device_code", dr.device_code};
 	pa = (PArray){2, p};
-	for(deadline = time(0) + (long)dr.interval; time(0) < deadline; sleep(dr.interval)){
+	for(deadline = time(0) + (long)dr.expires_in; time(0) < deadline; sleep(dr.interval)){
 		r = readjsonhttp(Httppost, disc.token_endpoint, pa, trelems, nelem(trelems), &tr);
 		if(r < 0){
 			jsondestroy(trelems, nelem(trelems), &tr);
