@@ -379,6 +379,7 @@ deviceflow(char *issuer, char *scope)
 	if(tr.id_token != nil) print(" id_token=%q", tr.id_token);
 	if(tr.scope != nil) print(" scope=%q", tr.scope);
 	print("\n");
+	r = 0;
 	out:
 	jsondestroy(discelems, nelem(discelems), &disc);
 	jsondestroy(drelems, nelem(drelems), &dr);
