@@ -258,7 +258,7 @@ jsondestroy(Elem *e, int n, void *out)
 	int i;
 	for(i = 0; i < n; i++){
 		if(e->type == JSONString){
-			free((char*)out + e->off);
+			free(*(char **)((char*)out + e->off));
 		}
 	}
 }
