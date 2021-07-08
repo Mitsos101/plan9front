@@ -18,6 +18,7 @@ erealloc(void *v, ulong sz)
 	return nv;
 }
 
+char *mtpt = "/mnt/web";
 
 enum
 {
@@ -171,12 +172,11 @@ readall(int fd)
 static char*
 dohttp(int meth, char *url, PArray *pa)
 {
-	char buf[1024], *mtpt, *s;
+	char buf[1024], *s;
 	int ctlfd, fd, conn, n;
 
 	s = nil;
 	fd = -1;
-	mtpt = "/mnt/web";
 	snprint(buf, sizeof buf, "%s/clone", mtpt);
 	if((ctlfd = open(buf, ORDWR)) < 0){
 		werrstr("couldn't open %s: %r", buf);
@@ -327,6 +327,25 @@ readjsonhttp(int meth, char *url, PArray *pa, Elem* e, int n, void *out)
 }
 
 int
+webfsctl(char *cmd)
+{
+	int fd;
+	char buf[1024];
+
+	snprint(buf, sizeof buf, "%s/ctl", mtpt);
+	if((fd = open(buf, OWRITE)) < 0){
+		werrstr("open %s: %r", buf);
+		return -1;
+	}
+	if(fprint(fd, "%s", cmd) < 0){
+		werrstr("write %s: %r", buf);
+		return -1;
+	}
+	return 0;
+}
+
+
+int
 deviceflow(char *issuer, char *scope, char *client_id)
 {
 	char buf[1024];
@@ -368,6 +387,12 @@ deviceflow(char *issuer, char *scope, char *client_id)
 	}
 	print("go to %s\n", dr.verification_uri);
 	print("your code is %s\n", dr.user_code);
+	snprint(buf, sizeof buf, "preauth %s %s", disc.token_endpoint, "oauth");
+	r = webfsctl(buf);
+	if(r < 0){
+		werrstr("webfsctl: %r");
+		goto out;
+	}
 	pa = (PArray){2, p};
 	p[0] = (Pair){"grant_type", "urn:ietf:params:oauth:grant-type:device_code"};
 	p[1] = (Pair){"device_code", dr.device_code};
