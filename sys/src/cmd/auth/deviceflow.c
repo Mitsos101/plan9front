@@ -406,7 +406,7 @@ deviceflow(char *issuer, char *scope)
 void
 usage(void)
 {
-	fprint(2, "usage: deviceflow issuer scope");
+	fprint(2, "usage: deviceflow issuer scope\n");
 	exits("usage");
 }
 
