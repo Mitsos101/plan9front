@@ -201,6 +201,10 @@ dohttp(int meth, char *url, PArray *pa)
 			}
 			break;
 		case Httppost:
+			if(fprint(ctlfd, "url %s", url) < 0){
+				werrstr("url ctl write: %r");
+				goto out;
+			}
 			snprint(buf, sizeof buf, "%s/%d/postbody", mtpt, conn);
 			if((fd = open(buf, OWRITE)) < 0){
 				werrstr("open %s: %r", buf);
