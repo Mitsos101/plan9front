@@ -374,7 +374,7 @@ deviceflow(char *issuer, char *scope)
 		r = readjsonhttp(Httppost, disc.token_endpoint, &pa, trelems, nelem(trelems), &tr);
 		if(r < 0){
 			jsondestroy(trelems, nelem(trelems), &tr);
-			memset(tr, 0, sizeof tr);
+			memset(&tr, 0, sizeof tr);
 			/* check for special errors, don't give up yet */
 			rerrstr(errbuf, sizeof errbuf);
 			if(strstr(errbuf, "authorization_pending") != nil){
