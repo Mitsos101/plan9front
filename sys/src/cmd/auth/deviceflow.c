@@ -78,7 +78,7 @@ struct Deviceresp
 {
 	char *device_code;
 	char *user_code;
-	char *verification_uri;
+	char *verification_url; /* this should be verification_uri according to rfc8628 but google uses this */
 	double expires_in;
 	double interval;
 };
@@ -87,7 +87,7 @@ static Elem drelems[] =
 {
 	{"device_code", JSONString, offsetof(Deviceresp, device_code), 1},
 	{"user_code", JSONString, offsetof(Deviceresp, user_code), 1},
-	{"verification_uri", JSONString, offsetof(Deviceresp, verification_uri), 1},
+	{"verification_url", JSONString, offsetof(Deviceresp, verification_url), 1},
 	{"expires_in", JSONNumber, offsetof(Deviceresp, expires_in), 1},
 	{"interval", JSONNumber, offsetof(Deviceresp, interval), 0},
 };
@@ -391,7 +391,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 		werrstr("readjsonhttp device_authorization_endpoint: %r");
 		goto out;
 	}
-	print("go to %s\n", dr.verification_uri);
+	print("go to %s\n", dr.verification_url);
 	print("your code is %s\n", dr.user_code);
 	snprint(buf, sizeof buf, "preauth %s %s", disc.token_endpoint, "oauth");
 	r = webfsctl(buf);
