@@ -262,9 +262,9 @@ jsondestroy(Elem *e, int n, void *out)
 	int i;
 
 	for(i = 0; i < n; i++){
-		if(e->type == JSONString){
-			free(*(char **)((char*)out + e->off));
-			*(char**)((char*)out + e->off) = nil;
+		if(e[i].type == JSONString){
+			free(*(char **)((char*)out + e[i].off));
+			*(char**)((char*)out + e[i].off) = nil;
 		}
 	}
 }
@@ -276,28 +276,28 @@ readjson(JSON *j, Elem* e, int n, void *out)
 	int i;
 	JSON *t;
 	for(i = 0; i < n; i++){
-		if((t = jsonbyname(j, e->name)) == nil){
-			if(!e->required)
+		if((t = jsonbyname(j, e[i].name)) == nil){
+			if(!e[i].required)
 				continue;
 			werrstr("jsonbyname: %r");
 			jsondestroy(e, n, out);
 			return -1;
 		}
-		if(e->type != t->t){
-			werrstr("types for key %s do not match: need %s, got %s", e->name, typename[e->type], typename[t->t]);
+		if(e[i].type != t->t){
+			werrstr("types for key %s do not match: need %s, got %s", e[i].name, typename[e[i].type], typename[t->t]);
 			jsondestroy(e, n, out);
 			return -1;
 		}
-		switch(e->type){
+		switch(e[i].type){
 		default:
-			werrstr("no way to read type %s", typename[e->type]);
+			werrstr("no way to read type %s", typename[e[i].type]);
 			jsondestroy(e, n, out);
 			return -1;
 		case JSONNumber:
-			*(double *)((char*)out + e->off) = t->n;
+			*(double *)((char*)out + e[i].off) = t->n;
 			break;
 		case JSONString:
-			if((*(char **)((char*)out + e->off) = strdup(t->s)) == nil){
+			if((*(char **)((char*)out + e[i].off) = strdup(t->s)) == nil){
 				werrstr("strdup: %r");
 				jsondestroy(e, n, out);
 				return -1;
