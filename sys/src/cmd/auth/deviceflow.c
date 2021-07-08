@@ -379,7 +379,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 
 	r = readjsonhttp(Httpget, buf, nil, discelems, nelem(discelems), &disc);
 	if(r < 0){
-		werrstr("readjsonhttp: %r");
+		werrstr("readjsonhttp openid-configuration: %r");
 		goto out;
 	}
 	dr.interval = 5;
@@ -388,7 +388,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 	p[1] = (Pair){"client_id", client_id};
 	r = readjsonhttp(Httppost, disc.device_authorization_endpoint, &pa, drelems, nelem(drelems), &dr);
 	if(r < 0){
-		werrstr("readjsonhttp: %r");
+		werrstr("readjsonhttp device_authorization_endpoint: %r");
 		goto out;
 	}
 	print("go to %s\n", dr.verification_uri);
@@ -416,7 +416,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 				dr.interval += 5;
 				continue;
 			}
-			werrstr("readjsonhttp: %r");
+			werrstr("readjsonhttp token_endpoint: %r");
 			goto out;
 		}
 		break;
