@@ -317,7 +317,7 @@ readjsonhttp(int meth, char *url, PArray *pa, Elem* e, int n, void *out)
 		jsonfree(j);
 		return -1;
 	}
-	int r = readjson(j, e, n, out);
+	r = readjson(j, e, n, out);
 	jsonfree(j);
 	if(r < 0){
 		werrstr("readjson: %r");
@@ -339,9 +339,9 @@ deviceflow(char *issuer, char *scope)
 	PArray pa;
 	int r;
 
-	memset(disc, 0, sizeof disc);
-	memset(dr, 0, sizeof dr);
-	memset(tr, 0, sizeof tr);
+	memset(&disc, 0, sizeof disc);
+	memset(&dr, 0, sizeof dr);
+	memset(&tr, 0, sizeof tr);
 	if(scope == nil){
 		werrstr("scope missing");
 		return -1;
@@ -359,8 +359,8 @@ deviceflow(char *issuer, char *scope)
 	}
 	dr.interval = 5;
 	pa = (PArray){1, p};
-	p = (Pair){"scope", scope};
-	r = readjsonhttp(Httppost, disc.device_authorization_endpoint, pa, drelems, nelem(drelems), &dr);
+	p[0] = (Pair){"scope", scope};
+	r = readjsonhttp(Httppost, disc.device_authorization_endpoint, &pa, drelems, nelem(drelems), &dr);
 	if(r < 0){
 		werrstr("readjsonhttp: %r");
 		goto out;
@@ -371,7 +371,7 @@ deviceflow(char *issuer, char *scope)
 	p[1] = (Pair){"device_code", dr.device_code};
 	pa = (PArray){2, p};
 	for(deadline = time(0) + (long)dr.expires_in; time(0) < deadline; sleep((long)dr.interval)){
-		r = readjsonhttp(Httppost, disc.token_endpoint, pa, trelems, nelem(trelems), &tr);
+		r = readjsonhttp(Httppost, disc.token_endpoint, &pa, trelems, nelem(trelems), &tr);
 		if(r < 0){
 			jsondestroy(trelems, nelem(trelems), &tr);
 			memset(tr, 0, sizeof tr);
