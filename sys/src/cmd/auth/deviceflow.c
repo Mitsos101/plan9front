@@ -452,6 +452,7 @@ main(int argc, char *argv[])
 	if(argc != 4){
 		usage();
 	}
+	fmtinstall('U', hurlfmt);
 	fmtinstall('P', pairfmt);
 	fmtinstall('L', parrayfmt);
 	quotefmtinstall();
