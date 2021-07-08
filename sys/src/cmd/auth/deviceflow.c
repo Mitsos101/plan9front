@@ -258,7 +258,7 @@ jsondestroy(Elem *e, int n, void *out)
 	int i;
 	for(i = 0; i < n; i++){
 		if(e->type == JSONString){
-			free(out + e->off);
+			free((char*)out + e->off);
 		}
 	}
 }
@@ -288,10 +288,10 @@ readjson(JSON *j, Elem* e, int n, void *out)
 			jsondestroy(e, n, out);
 			return -1;
 		case JSONNumber:
-			*(double *)(out + e->off) = t->n;
+			*(double *)((char*)out + e->off) = t->n;
 			break;
 		case JSONString:
-			if((*(char **)(out + e->off) = strdup(t->s)) == nil){
+			if((*(char **)((char*)out + e->off) = strdup(t->s)) == nil){
 				werrstr("strdup: %r");
 				jsondestroy(e, n, out);
 				return -1;
