@@ -327,7 +327,7 @@ readjsonhttp(int meth, char *url, PArray *pa, Elem* e, int n, void *out)
 }
 
 int
-deviceflow(char *issuer, char *scope)
+deviceflow(char *issuer, char *scope, char *client_id)
 {
 	char buf[1024];
 	char errbuf[ERRMAX];
@@ -358,8 +358,9 @@ deviceflow(char *issuer, char *scope)
 		goto out;
 	}
 	dr.interval = 5;
-	pa = (PArray){1, p};
+	pa = (PArray){2, p};
 	p[0] = (Pair){"scope", scope};
+	p[1] = (Pair){"client_id", client_id};
 	r = readjsonhttp(Httppost, disc.device_authorization_endpoint, &pa, drelems, nelem(drelems), &dr);
 	if(r < 0){
 		werrstr("readjsonhttp: %r");
@@ -367,10 +368,10 @@ deviceflow(char *issuer, char *scope)
 	}
 	print("go to %s\n", dr.verification_uri);
 	print("your code is %s\n", dr.user_code);
+	pa = (PArray){2, p};
 	p[0] = (Pair){"grant_type", "urn:ietf:params:oauth:grant-type:device_code"};
 	p[1] = (Pair){"device_code", dr.device_code};
-	pa = (PArray){2, p};
-	for(deadline = time(0) + (long)dr.expires_in; time(0) < deadline; sleep((long)dr.interval)){
+	for(deadline = time(0) + (long)dr.expires_in;; sleep((long)dr.interval)){
 		r = readjsonhttp(Httppost, disc.token_endpoint, &pa, trelems, nelem(trelems), &tr);
 		if(r < 0){
 			jsondestroy(trelems, nelem(trelems), &tr);
@@ -415,8 +416,9 @@ main(int argc, char *argv[])
 {
 	char *issuer;
 	char *scope;
+	char *client_id; /* google needs this in the query string */
 
-	if(argc != 3){
+	if(argc != 4){
 		usage();
 	}
 	fmtinstall('P', pairfmt);
@@ -424,7 +426,8 @@ main(int argc, char *argv[])
 	quotefmtinstall();
 	issuer = argv[1];
 	scope = argv[2];
-	if(deviceflow(issuer, scope) < 0){
+	client_id = argv[3];
+	if(deviceflow(issuer, scope, client_id) < 0){
 		sysfatal("deviceflow: %r");
 	}
 	exits(0);
