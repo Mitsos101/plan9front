@@ -3,6 +3,22 @@
 #include <json.h>
 #include <httpd.h>
 
+void*
+erealloc(void *v, ulong sz)
+{
+	void *nv;
+
+	if((nv = realloc(v, sz)) == nil && sz != 0) {
+		fprint(2, "out of memory allocating %lud\n", sz);
+		exits("mem");
+	}
+	if(v == nil)
+		setmalloctag(nv, getcallerpc(&v));
+	setrealloctag(nv, getcallerpc(&v));
+	return nv;
+}
+
+
 enum
 {
 	Httpget,
