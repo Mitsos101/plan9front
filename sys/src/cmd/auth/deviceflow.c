@@ -412,10 +412,6 @@ printkey(Tokenresp *tr)
 {
 	print("key proto=oauth token_type=%q exptime=%ld refresh_token=%q access_token=%q scope=%q\n",
 	tr->token_type, time(0) + (long)tr->expires_in, tr->refresh_token, tr->access_token, tr->scope);
-	if(test && dotest(&disc, &tr) < 0){
-		werrstr("dotest: %r");
-		return -1;
-	}
 	return 0;
 }
 
@@ -446,6 +442,10 @@ refreshflow(char *issuer, char *scope, char *refresh_token)
 	if(r < 0){
 		werrstr("printkey: %r");
 		goto out;
+	}
+	if(test && dotest(&disc, &tr) < 0){
+		werrstr("dotest: %r");
+		return -1;
 	}
 	r = 0;
 	out:
@@ -527,6 +527,10 @@ deviceflow(char *issuer, char *scope, char *client_id)
 	if(r < 0){
 		werrstr("printkey: %r");
 		goto out;
+	}
+	if(test && dotest(&disc, &tr) < 0){
+		werrstr("dotest: %r");
+		return -1;
 	}
 	r = 0;
 	out:
