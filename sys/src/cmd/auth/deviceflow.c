@@ -427,11 +427,8 @@ deviceflow(char *issuer, char *scope, char *client_id)
 		break;
 	}
 	exptime = time(0) + (long)tr.expires_in;
-	print("key proto=oauth token_type=%q exptime=%ld refresh_token=%q", tr.token_type, exptime, tr.refresh_token);
-	if(tr.access_token != nil) print(" access_token=%q", tr.access_token);
-	/* if(tr.id_token != nil) print(" id_token=%q", tr.id_token); */
-	if(tr.scope != nil) print(" scope=%q", tr.scope);
-	print("\n");
+	print("key proto=oauth token_type=%q exptime=%ld refresh_token=%q access_token=%q scope=%q\n",
+	tr.token_type, exptime, tr.refresh_token, tr.access_token, tr.scope != nil ? tr.scope : scope);
 	r = 0;
 	out:
 	jsondestroy(discelems, nelem(discelems), &disc);
