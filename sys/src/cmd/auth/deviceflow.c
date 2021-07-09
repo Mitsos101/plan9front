@@ -567,7 +567,7 @@ main(int argc, char *argv[])
 		break;
 	} ARGEND
 
-	if(argc != 3 || argc != 4){
+	if(argc != 3 && argc != 4){
 		usage();
 	}
 	fmtinstall('U', hurlfmt);
