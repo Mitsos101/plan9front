@@ -65,12 +65,14 @@ struct Discovery
 {
 	char *device_authorization_endpoint;
 	char *token_endpoint;
+	char *userinfo_endpoint;
 };
 
 static Elem discelems[] =
 {
 	{"device_authorization_endpoint", JSONString, offsetof(Discovery, device_authorization_endpoint), 1},
 	{"token_endpoint", JSONString, offsetof(Discovery, token_endpoint), 1},
+	{"userinfo_endpoint", JSONString, offsetof(Discovery, userinfo_endpoint), 1},
 };
 
 typedef struct Deviceresp Deviceresp;
@@ -113,6 +115,16 @@ static Elem trelems[] =
 	{"scope", JSONString, offsetof(Tokenresp, scope), 0},
 };
 
+typedef struct Userinfo Userinfo;
+struct Userinfo
+{
+	char *email;
+};
+
+static Elem uielems[] =
+{
+	{"email", JSONString", offsetof(Tokenresp, email), 1},
+};
 
 #pragma varargck	type	"P"	Pair*
 #pragma varargck	type	"L"	PArray*
@@ -350,6 +362,24 @@ webfsctl(char *cmd)
 	return 0;
 }
 
+int test;
+
+void
+dotest(Discovery* disc, Tokenresp *tr)
+{
+	Userinfo ui;
+	int r;
+
+	memset(&ui, 0, sizeof ui);
+	r = dojsonhttp(Httpget, disc->userinfo_endpoint, nil, uielems, nelem(uielems), &ui);
+	if(r < 0){
+		werrstr("dojsonhttp userinfo_endpoint: %r");
+		return r;
+	}
+	fprint(2, "you are %s\n", ui.email);
+	return 0;
+}
+
 
 int
 deviceflow(char *issuer, char *scope, char *client_id)
@@ -429,6 +459,10 @@ deviceflow(char *issuer, char *scope, char *client_id)
 	exptime = time(0) + (long)tr.expires_in;
 	print("key proto=oauth token_type=%q exptime=%ld refresh_token=%q access_token=%q scope=%q\n",
 	tr.token_type, exptime, tr.refresh_token, tr.access_token, tr.scope != nil ? tr.scope : scope);
+	if(test && (r = dotest(&disc, &tr)) < 0){
+		werrstr("dotest: %r");
+		goto out;
+	}
 	r = 0;
 	out:
 	jsondestroy(discelems, nelem(discelems), &disc);
@@ -451,16 +485,19 @@ main(int argc, char *argv[])
 	char *scope;
 	char *client_id; /* google needs this in the query string */
 
-	if(argc != 4){
-		usage();
-	}
+	ARGBEGIN {
+	case 't':
+		test++;
+		break;
+	} ARGEND
+
 	fmtinstall('U', hurlfmt);
 	fmtinstall('P', pairfmt);
 	fmtinstall('L', parrayfmt);
 	quotefmtinstall();
-	issuer = argv[1];
-	scope = argv[2];
-	client_id = argv[3];
+	issuer = argv[0];
+	scope = argv[1];
+	client_id = argv[2];
 	if(deviceflow(issuer, scope, client_id) < 0){
 		sysfatal("deviceflow: %r");
 	}
