@@ -105,7 +105,7 @@ struct Tokenresp
 
 static Elem trelems[] =
 {
-	{"access_token", JSONString, offsetof(Tokenresp, access_token), 0},
+	{"access_token", JSONString, offsetof(Tokenresp, access_token), 1},
 	{"id_token", JSONString, offsetof(Tokenresp, id_token), 0},
 	{"token_type", JSONString, offsetof(Tokenresp, token_type), 1},
 	{"expires_in", JSONNumber, offsetof(Tokenresp, expires_in), 1}, /* this is set to required for simplicity */
@@ -429,7 +429,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 	exptime = time(0) + (long)tr.expires_in;
 	print("key proto=oauth token_type=%q exptime=%ld refresh_token=%q", tr.token_type, exptime, tr.refresh_token);
 	if(tr.access_token != nil) print(" access_token=%q", tr.access_token);
-	if(tr.id_token != nil) print(" id_token=%q", tr.id_token);
+	/* if(tr.id_token != nil) print(" id_token=%q", tr.id_token); */
 	if(tr.scope != nil) print(" scope=%q", tr.scope);
 	print("\n");
 	r = 0;
