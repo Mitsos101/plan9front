@@ -371,9 +371,9 @@ dotest(Discovery* disc, Tokenresp *tr)
 	int r;
 
 	memset(&ui, 0, sizeof ui);
-	r = dojsonhttp(Httpget, disc->userinfo_endpoint, nil, uielems, nelem(uielems), &ui);
+	r = readjsonhttp(Httpget, disc->userinfo_endpoint, nil, uielems, nelem(uielems), &ui);
 	if(r < 0){
-		werrstr("dojsonhttp userinfo_endpoint: %r");
+		werrstr("readjsonhttp userinfo_endpoint: %r");
 		return r;
 	}
 	fprint(2, "you are %s\n", ui.email);
