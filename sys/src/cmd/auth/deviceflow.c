@@ -408,13 +408,59 @@ flowinit(char *issuer, Discovery *disc)
 }
 
 int
+printkey(Tokenresp *tr)
+{
+	print("key proto=oauth token_type=%q exptime=%ld refresh_token=%q access_token=%q scope=%q\n",
+	tr->token_type, time(0) + (long)tr->expires_in, tr->refresh_token, tr->access_token, tr->scope);
+	if(test && dotest(&disc, &tr) < 0){
+		werrstr("dotest: %r");
+		return -1;
+	}
+	return 0;
+}
+
+int
+refreshflow(char *issuer, char *scope, char *refresh_token)
+{
+	Pair p[2];
+	Discovery disc;
+	PArray pa;
+	int r;
+	Tokenresp tr;
+
+	memset(&disc, 0, sizeof disc);
+	memset(&tr, 0, sizeof tr);
+
+	pa = (PArray){2, p};
+	p[0] = {"grant_type", "refresh_token"};
+	p[1] = {"refresh_token", refresh_token};
+	r = readjsonhttp(Httppost, disc.token_endpoint, &pa, trelems, nelem(trelems), &tr);
+	if(r < 0){
+		werrstr("readjsonhttp token_endpoint: %r");
+		goto out;
+	}
+
+	if(tr.scope == nil)
+		tr.scope = scope;
+	r = printkey(&tr);
+	if(r < 0){
+		werrstr("printkey: %r");
+		goto out;
+	}
+	r = 0;
+	out:
+	jsondestroy(discelems, nelem(discelems), &disc);
+	jsondestroy(trelems, nelem(trelems), &tr);
+	return r;
+}
+
+int
 deviceflow(char *issuer, char *scope, char *client_id)
 {
 	char errbuf[ERRMAX];
 	Discovery disc;
 	Deviceresp dr;
 	Tokenresp tr;
-	long deadline, exptime;
 	Pair p[2];
 	PArray pa;
 	int r;
@@ -475,11 +521,11 @@ deviceflow(char *issuer, char *scope, char *client_id)
 		}
 		break;
 	}
-	exptime = time(0) + (long)tr.expires_in;
-	print("key proto=oauth token_type=%q exptime=%ld refresh_token=%q access_token=%q scope=%q\n",
-	tr.token_type, exptime, tr.refresh_token, tr.access_token, tr.scope != nil ? tr.scope : scope);
-	if(test && (r = dotest(&disc, &tr)) < 0){
-		werrstr("dotest: %r");
+	if(tr.scope == nil)
+		tr.scope = scope;
+	r = printkey(&tr);
+	if(r < 0){
+		werrstr("printkey: %r");
 		goto out;
 	}
 	r = 0;
@@ -493,7 +539,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 void
 usage(void)
 {
-	fprint(2, "usage: auth/deviceflow [-t] issuer scope client_id\n");
+	fprint(2, "usage: auth/deviceflow [-t] issuer scope client_id [refresh_token]\n");
 	exits("usage");
 }
 
@@ -503,6 +549,7 @@ main(int argc, char *argv[])
 	char *issuer;
 	char *scope;
 	char *client_id; /* google needs this in the query string */
+	char *refresh_token;
 
 	ARGBEGIN {
 	case 't':
@@ -510,6 +557,9 @@ main(int argc, char *argv[])
 		break;
 	} ARGEND
 
+	if(argc != 3 || argc != 4){
+		usage();
+	}
 	fmtinstall('U', hurlfmt);
 	fmtinstall('P', pairfmt);
 	fmtinstall('L', parrayfmt);
@@ -517,11 +567,16 @@ main(int argc, char *argv[])
 	issuer = argv[0];
 	scope = argv[1];
 	client_id = argv[2];
-	if(argc != 3){
-		usage();
+	if(argc == 4){
+		refresh_token = argv[3];
+		if(refreshflow(issuer, scope, refresh_token) < 0){
+			sysfatal("refreshflow: %r");
+		}
 	}
-	if(deviceflow(issuer, scope, client_id) < 0){
-		sysfatal("deviceflow: %r");
+	else if(argc == 3){
+		if(deviceflow(issuer, scope, client_id) < 0){
+			sysfatal("deviceflow: %r");
+		}
 	}
 	exits(0);
 }
