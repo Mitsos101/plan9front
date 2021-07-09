@@ -123,7 +123,7 @@ struct Userinfo
 
 static Elem uielems[] =
 {
-	{"email", JSONString, offsetof(Tokenresp, email), 1},
+	{"email", JSONString, offsetof(Userinfo, email), 1},
 };
 
 #pragma varargck	type	"P"	Pair*
@@ -364,14 +364,18 @@ webfsctl(char *cmd)
 
 int test;
 
-void
+int
 dotest(Discovery* disc, Tokenresp *tr)
 {
 	Userinfo ui;
 	int r;
+	Pair p[1]
+	PArray pa;
 
 	memset(&ui, 0, sizeof ui);
-	r = readjsonhttp(Httpget, disc->userinfo_endpoint, nil, uielems, nelem(uielems), &ui);
+	pa = (PArray){1, p};
+	p[0] = {"access_token", tr->access_token);
+	r = readjsonhttp(Httpget, disc->userinfo_endpoint, &pa, uielems, nelem(uielems), &ui);
 	if(r < 0){
 		werrstr("readjsonhttp userinfo_endpoint: %r");
 		return r;
