@@ -369,7 +369,7 @@ dotest(Discovery* disc, Tokenresp *tr)
 {
 	Userinfo ui;
 	int r;
-	Pair p[1]
+	Pair p[1];
 	PArray pa;
 
 	memset(&ui, 0, sizeof ui);
