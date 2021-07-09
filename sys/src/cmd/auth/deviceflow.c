@@ -434,8 +434,8 @@ refreshflow(char *issuer, char *scope, char *refresh_token)
 	}
 
 	pa = (PArray){2, p};
-	p[0] = {"grant_type", "refresh_token"};
-	p[1] = {"refresh_token", refresh_token};
+	p[0] = (Pair){"grant_type", "refresh_token"};
+	p[1] = (Pair){"refresh_token", refresh_token};
 	r = readjsonhttp(Httppost, disc.token_endpoint, &pa, trelems, nelem(trelems), &tr);
 	if(r < 0){
 		werrstr("readjsonhttp token_endpoint: %r");
