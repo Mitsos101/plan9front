@@ -111,7 +111,7 @@ static Elem trelems[] =
 	{"id_token", JSONString, offsetof(Tokenresp, id_token), 0},
 	{"token_type", JSONString, offsetof(Tokenresp, token_type), 1},
 	{"expires_in", JSONNumber, offsetof(Tokenresp, expires_in), 1}, /* this is set to required for simplicity */
-	{"refresh_token", JSONString, offsetof(Tokenresp, refresh_token), 1}, /* this is set to required for simplicity */
+	{"refresh_token", JSONString, offsetof(Tokenresp, refresh_token), 0},
 	{"scope", JSONString, offsetof(Tokenresp, scope), 0},
 };
 
@@ -410,8 +410,11 @@ flowinit(char *issuer, Discovery *disc)
 int
 printkey(Tokenresp *tr)
 {
-	print("key proto=oauth token_type=%q exptime=%ld refresh_token=%q access_token=%q scope=%q\n",
-	tr->token_type, time(0) + (long)tr->expires_in, tr->refresh_token, tr->access_token, tr->scope);
+	print("key proto=oauth token_type=%q exptime=%ld access_token=%q scope=%q",
+	tr->token_type, time(0) + (long)tr->expires_in, tr->access_token, tr->scope);
+	if(tr->refresh_token != nil)
+		print(" refresh_token=%q");
+	print("\n");
 	return 0;
 }
 
@@ -444,6 +447,8 @@ refreshflow(char *issuer, char *scope, char *refresh_token)
 
 	if(tr.scope == nil)
 		tr.scope = scope;
+	if(tr.refresh_token == nil)
+		tr.refresh_token = refresh_token;
 	r = printkey(&tr);
 	if(r < 0){
 		werrstr("printkey: %r");
