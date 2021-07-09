@@ -391,8 +391,8 @@ deviceflow(char *issuer, char *scope, char *client_id)
 		werrstr("readjsonhttp device_authorization_endpoint: %r");
 		goto out;
 	}
-	print("go to %s\n", dr.verification_url);
-	print("your code is %s\n", dr.user_code);
+	fprint(2, "go to %s\n", dr.verification_url);
+	fprint(2, "your code is %s\n", dr.user_code);
 	snprint(buf, sizeof buf, "preauth %s %s", disc.token_endpoint, "oauth");
 	r = webfsctl(buf);
 	if(r < 0){
