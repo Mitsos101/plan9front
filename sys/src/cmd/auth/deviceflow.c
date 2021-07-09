@@ -413,7 +413,7 @@ printkey(Tokenresp *tr)
 	print("key proto=oauth token_type=%q exptime=%ld access_token=%q scope=%q",
 	tr->token_type, time(0) + (long)tr->expires_in, tr->access_token, tr->scope);
 	if(tr->refresh_token != nil)
-		print(" refresh_token=%q");
+		print(" refresh_token=%q", tr->refresh_token);
 	print("\n");
 	return 0;
 }
