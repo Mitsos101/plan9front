@@ -456,7 +456,7 @@ refreshflow(char *issuer, char *scope, char *refresh_token)
 	}
 	if(test && dotest(&disc, &tr) < 0){
 		werrstr("dotest: %r");
-		return -1;
+		goto out;
 	}
 	r = 0;
 	out:
@@ -541,7 +541,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 	}
 	if(test && dotest(&disc, &tr) < 0){
 		werrstr("dotest: %r");
-		return -1;
+		goto out;
 	}
 	r = 0;
 	out:
