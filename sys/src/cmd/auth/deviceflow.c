@@ -493,7 +493,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 void
 usage(void)
 {
-	fprint(2, "usage: deviceflow issuer scope client_id\n");
+	fprint(2, "usage: auth/deviceflow [-t] issuer scope client_id\n");
 	exits("usage");
 }
 
