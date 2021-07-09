@@ -123,7 +123,7 @@ struct Userinfo
 
 static Elem uielems[] =
 {
-	{"email", JSONString", offsetof(Tokenresp, email), 1},
+	{"email", "JSONString", offsetof(Tokenresp, email), 1},
 };
 
 #pragma varargck	type	"P"	Pair*
