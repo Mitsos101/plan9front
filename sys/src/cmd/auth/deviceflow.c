@@ -402,7 +402,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 	pa = (PArray){2, p};
 	p[0] = (Pair){"grant_type", "urn:ietf:params:oauth:grant-type:device_code"};
 	p[1] = (Pair){"device_code", dr.device_code};
-	while(sleep((long)dr.interval * 1000L)){
+	for(;;sleep((long)dr.interval * 1000L)){
 		r = readjsonhttp(Httppost, disc.token_endpoint, &pa, trelems, nelem(trelems), &tr);
 		if(r < 0){
 			jsondestroy(trelems, nelem(trelems), &tr);
