@@ -427,6 +427,12 @@ refreshflow(char *issuer, char *scope, char *refresh_token)
 	memset(&disc, 0, sizeof disc);
 	memset(&tr, 0, sizeof tr);
 
+	r = flowinit(issuer, &disc);
+	if(r < 0){
+		werrstr("flowinit: %r");
+		goto out;
+	}
+
 	pa = (PArray){2, p};
 	p[0] = {"grant_type", "refresh_token"};
 	p[1] = {"refresh_token", refresh_token};
