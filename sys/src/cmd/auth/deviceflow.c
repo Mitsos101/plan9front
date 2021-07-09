@@ -450,6 +450,13 @@ refreshflow(char *issuer, char *scope, char *refresh_token)
 	if(tr.refresh_token == nil)
 		tr.refresh_token = refresh_token;
 	r = printkey(&tr);
+
+	/* make sure those don't get freed */
+	if(tr.scope == scope)
+		tr.scope = nil;
+	if(tr.refresh_token == refresh_token)
+		tr.refresh_token = nil;
+
 	if(r < 0){
 		werrstr("printkey: %r");
 		goto out;
