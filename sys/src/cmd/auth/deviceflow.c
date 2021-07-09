@@ -517,6 +517,9 @@ main(int argc, char *argv[])
 	issuer = argv[0];
 	scope = argv[1];
 	client_id = argv[2];
+	if(argc != 3){
+		usage();
+	}
 	if(deviceflow(issuer, scope, client_id) < 0){
 		sysfatal("deviceflow: %r");
 	}
