@@ -374,7 +374,7 @@ dotest(Discovery* disc, Tokenresp *tr)
 
 	memset(&ui, 0, sizeof ui);
 	pa = (PArray){1, p};
-	p[0] = {"access_token", tr->access_token);
+	p[0] = (Pair){"access_token", tr->access_token};
 	r = readjsonhttp(Httpget, disc->userinfo_endpoint, &pa, uielems, nelem(uielems), &ui);
 	if(r < 0){
 		werrstr("readjsonhttp userinfo_endpoint: %r");
