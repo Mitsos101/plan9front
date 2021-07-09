@@ -407,9 +407,14 @@ deviceflow(char *issuer, char *scope, char *client_id)
 		if(r < 0){
 			jsondestroy(trelems, nelem(trelems), &tr);
 			memset(&tr, 0, sizeof tr);
-			/* check for special errors, don't give up yet */
+			/*
+			check for special errors, don't give up yet.
+			9front webfs doesn't let us look at the body,
+			but we can try guessing based on the status code.
+			*/
 			rerrstr(errbuf, sizeof errbuf);
-			if(strstr(errbuf, "authorization_pending") != nil){
+			if(strstr(errbuf, "authorization_pending") != nil ||
+			   strstr(errbuf, "Precondition Required") != nil){
 				continue;
 			}
 			if(strstr(errbuf, "slow_down") != nil){
