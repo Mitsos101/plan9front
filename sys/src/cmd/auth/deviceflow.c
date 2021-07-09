@@ -384,11 +384,32 @@ dotest(Discovery* disc, Tokenresp *tr)
 	return 0;
 }
 
+int
+flowinit(char *issuer, Discovery *disc)
+{
+	char buf[1024];
+	int r;
+
+	snprint(buf, sizeof buf, "%s%s", issuer, "/.well-known/openid-configuration");
+	r = readjsonhttp(Httpget, buf, nil, discelems, nelem(discelems), disc);
+	if(r < 0){
+		werrstr("readjsonhttp openid-configuration: %r");
+		return r;
+	}
+
+	snprint(buf, sizeof buf, "preauth %s %s", disc->token_endpoint, "oauth");
+	r = webfsctl(buf);
+	if(r < 0){
+		werrstr("webfsctl: %r");
+		return r;
+	}
+
+	return 0;
+}
 
 int
 deviceflow(char *issuer, char *scope, char *client_id)
 {
-	char buf[1024];
 	char errbuf[ERRMAX];
 	Discovery disc;
 	Deviceresp dr;
@@ -409,13 +430,13 @@ deviceflow(char *issuer, char *scope, char *client_id)
 		werrstr("issuer missing");
 		return -1;
 	}
-	snprint(buf, sizeof buf, "%s%s", issuer, "/.well-known/openid-configuration");
 
-	r = readjsonhttp(Httpget, buf, nil, discelems, nelem(discelems), &disc);
+	r = flowinit(issuer, &disc);
 	if(r < 0){
-		werrstr("readjsonhttp openid-configuration: %r");
+		werrstr("flowinit: %r");
 		goto out;
 	}
+
 	dr.interval = 5;
 	pa = (PArray){2, p};
 	p[0] = (Pair){"scope", scope};
@@ -427,12 +448,6 @@ deviceflow(char *issuer, char *scope, char *client_id)
 	}
 	fprint(2, "go to %s\n", dr.verification_url);
 	fprint(2, "your code is %s\n", dr.user_code);
-	snprint(buf, sizeof buf, "preauth %s %s", disc.token_endpoint, "oauth");
-	r = webfsctl(buf);
-	if(r < 0){
-		werrstr("webfsctl: %r");
-		goto out;
-	}
 	pa = (PArray){2, p};
 	p[0] = (Pair){"grant_type", "urn:ietf:params:oauth:grant-type:device_code"};
 	p[1] = (Pair){"device_code", dr.device_code};
