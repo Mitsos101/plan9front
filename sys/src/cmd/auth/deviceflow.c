@@ -461,7 +461,7 @@ refreshflow(char *issuer, char *scope, char *refresh_token)
 		werrstr("printkey: %r");
 		goto out;
 	}
-	if(test && dotest(&disc, &tr) < 0){
+	if(test && (r = dotest(&disc, &tr)) < 0){
 		werrstr("dotest: %r");
 		goto out;
 	}
@@ -546,7 +546,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 		werrstr("printkey: %r");
 		goto out;
 	}
-	if(test && dotest(&disc, &tr) < 0){
+	if(test && (r = dotest(&disc, &tr)) < 0){
 		werrstr("dotest: %r");
 		goto out;
 	}
