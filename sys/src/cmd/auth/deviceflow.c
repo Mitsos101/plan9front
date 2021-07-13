@@ -408,10 +408,10 @@ flowinit(char *issuer, Discovery *disc)
 }
 
 int
-printkey(Tokenresp *tr)
+printkey(char *issuer, char *client_id, Tokenresp *tr)
 {
-	print("key proto=oauth token_type=%q exptime=%ld !access_token=%q scope=%q",
-	tr->token_type, time(0) + (long)tr->expires_in, tr->access_token, tr->scope);
+	print("key proto=oauth issuer=%q client_id=%q token_type=%q exptime=%ld !access_token=%q scope=%q",
+	issuer, client_id, tr->token_type, time(0) + (long)tr->expires_in, tr->access_token, tr->scope);
 	if(tr->refresh_token != nil)
 		print(" !refresh_token=%q", tr->refresh_token);
 	print("\n");
@@ -419,7 +419,7 @@ printkey(Tokenresp *tr)
 }
 
 int
-refreshflow(char *issuer, char *scope, char *refresh_token)
+refreshflow(char *issuer, char *scope, char *client_id, char *refresh_token)
 {
 	Pair p[2];
 	Discovery disc;
@@ -449,7 +449,7 @@ refreshflow(char *issuer, char *scope, char *refresh_token)
 		tr.scope = scope;
 	if(tr.refresh_token == nil)
 		tr.refresh_token = refresh_token;
-	r = printkey(&tr);
+	r = printkey(issuer, client_id, &tr);
 
 	/* make sure those don't get freed */
 	if(tr.scope == scope)
@@ -541,7 +541,7 @@ deviceflow(char *issuer, char *scope, char *client_id)
 	}
 	if(tr.scope == nil)
 		tr.scope = scope;
-	r = printkey(&tr);
+	r = printkey(issuer, client_id, &tr);
 	if(r < 0){
 		werrstr("printkey: %r");
 		goto out;
@@ -591,7 +591,7 @@ main(int argc, char *argv[])
 	client_id = argv[2];
 	if(argc == 4){
 		refresh_token = argv[3];
-		if(refreshflow(issuer, scope, refresh_token) < 0){
+		if(refreshflow(issuer, scope, client_id, refresh_token) < 0){
 			sysfatal("refreshflow: %r");
 		}
 	}

@@ -88,5 +88,5 @@ Proto oauth =
 .read=		oauthread,
 .close=		oauthclose,
 .addkey=		replacekey,
-.keyprompt=	"issuer? scope? client_id? !client_secret?",
+.keyprompt=	"issuer? scope? client_id?",
 };
