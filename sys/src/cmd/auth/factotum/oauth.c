@@ -10,7 +10,7 @@ bindwebfs(void)
 
 	if(access("/mnt/web", AEXIST) < 0){
 		if((srvfd = open("#s/web", ORDWR)) >= 0){
-			if(mount(srvfd, -1, "/mnt", MBEFORE, "") != -1)
+			if(mount(srvfd, -1, "/mnt/web", MBEFORE, "") != -1)
 				return 0;
 			close(srvfd);
 		}
