@@ -19,7 +19,7 @@ bindwebfs(void)
 	return 0;
 }
 
-char *mtpt = "/mnt/web";
+char *webmtpt = "/mnt/web";
 
 enum
 {
@@ -179,7 +179,7 @@ dohttp(int meth, char *url, PArray *pa)
 
 	s = nil;
 	fd = -1;
-	snprint(buf, sizeof buf, "%s/clone", mtpt);
+	snprint(buf, sizeof buf, "%s/clone", webmtpt);
 	if((ctlfd = open(buf, ORDWR)) < 0){
 		werrstr("couldn't open %s: %r", buf);
 		return nil;
@@ -207,7 +207,7 @@ dohttp(int meth, char *url, PArray *pa)
 				werrstr("url ctl write: %r");
 				goto out;
 			}
-			snprint(buf, sizeof buf, "%s/%d/postbody", mtpt, conn);
+			snprint(buf, sizeof buf, "%s/%d/postbody", webmtpt, conn);
 			if((fd = open(buf, OWRITE)) < 0){
 				werrstr("open %s: %r", buf);
 				goto out;
@@ -220,7 +220,7 @@ dohttp(int meth, char *url, PArray *pa)
 			break;
 	}
 
-	snprint(buf, sizeof buf, "%s/%d/body", mtpt, conn);
+	snprint(buf, sizeof buf, "%s/%d/body", webmtpt, conn);
 	if((fd = open(buf, OREAD)) < 0){
 		werrstr("open %s: %r", buf);
 		goto out;
@@ -340,7 +340,7 @@ webfsctl(char *cmd)
 	int fd;
 	char buf[1024];
 
-	snprint(buf, sizeof buf, "%s/ctl", mtpt);
+	snprint(buf, sizeof buf, "%s/ctl", webmtpt);
 	if((fd = open(buf, OWRITE)) < 0){
 		werrstr("open %s: %r", buf);
 		return -1;
