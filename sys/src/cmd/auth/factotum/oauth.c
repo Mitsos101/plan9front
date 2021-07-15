@@ -374,18 +374,19 @@ flowinit(char *issuer, Discovery *disc)
 }
 
 int
-printkey(char *issuer, char *client_id, Tokenresp *tr)
+updatekey(Key *k, char *issuer, char *client_id, Tokenresp *tr)
 {
-	print("key proto=oauth issuer=%q client_id=%q token_type=%q exptime=%ld !access_token=%q scope=%q",
-	issuer, client_id, tr->token_type, time(0) + (long)tr->expires_in, tr->access_token, tr->scope);
+	setattr(k->attr, "proto=oauth issuer=%q client_id=%q token_type=%q exptime=%ld scope=%q",
+	issuer, client_id, tr->token_type, time(0) + (long)tr->expires_in, tr->scope);
+	setattr(k->privattr, "!access_token=%q", tr->access_token);
 	if(tr->refresh_token != nil)
-		print(" !refresh_token=%q", tr->refresh_token);
+		setattr(k->privattr, "!refresh_token=%q", tr->refresh_token);
 	print("\n");
 	return 0;
 }
 
 int
-refreshflow(char *issuer, char *scope, char *client_id, char *refresh_token)
+refreshflow(Key *k, char *issuer, char *scope, char *client_id, char *refresh_token)
 {
 	Pair p[2];
 	Discovery disc;
@@ -415,7 +416,7 @@ refreshflow(char *issuer, char *scope, char *client_id, char *refresh_token)
 		tr.scope = scope;
 	if(tr.refresh_token == nil)
 		tr.refresh_token = refresh_token;
-	r = printkey(issuer, client_id, &tr);
+	r = updatekey(k, issuer, client_id, &tr);
 
 	/* make sure those don't get freed */
 	if(tr.scope == scope)
@@ -424,7 +425,7 @@ refreshflow(char *issuer, char *scope, char *client_id, char *refresh_token)
 		tr.refresh_token = nil;
 
 	if(r < 0){
-		werrstr("printkey: %r");
+		werrstr("updatekey: %r");
 		goto out;
 	}
 	r = 0;
@@ -434,6 +435,44 @@ refreshflow(char *issuer, char *scope, char *client_id, char *refresh_token)
 	return r;
 }
 
+int
+refresh(Key *k)
+{
+	char *issuer;
+	char *scope;
+	char *client_id;
+	char *refresh_token;
+
+	if((issuer = _strfindattr(k->attr, "issuer")) == nil){
+		werrstr("issuer missing");
+		return -1;
+	}
+	if((scope = _strfindattr(k->attr, "scope")) == nil){
+		werrstr("scope missing");
+		return -1;
+	}
+	if((client_id = _strfindattr(k->attr, "client_id")) == nil){
+		werrstr("client_id missing");
+		return -1;
+	}
+	if((refresh_token = _strfindattr(k->privattr, "!refresh_token")) == nil){
+		werrstr("refresh_token missing");
+		return -1;
+	}
+
+	fmtinstall('U', hurlfmt);
+	fmtinstall('P', pairfmt);
+	fmtinstall('L', parrayfmt);
+	if(bindwebfs() < 0){
+		werrstr("bindwebfs: %r");
+		return -1;
+	}
+	if(refreshflow(k, issuer, scope, client_id, refresh_token) < 0){
+		werrstr("refreshflow: %r");
+		return -1;
+	}
+	return replacekey(k, 0);
+}
 
 
 typedef struct State State;
@@ -464,6 +503,9 @@ oauthinit(Proto *p, Fsstate *fss)
 	ret = findkey(&k, mkkeyinfo(&ki, fss, nil), "%s", p->keyprompt);
 	if(ret != RpcOk)
 		return ret;
+	if(refresh(k) < 0){
+		return failure(fss, "refresh: %r");
+	}
 	setattrs(fss->attr, k->attr);
 	s = emalloc(sizeof(*s));
 	s->key = k;
