@@ -256,7 +256,7 @@ jsonhttp(int meth, char *url, PArray *pa)
 	return j;
 }
 
-void
+static void
 jsondestroy(Elem *e, int n, void *out)
 {
 	int i;
@@ -270,7 +270,7 @@ jsondestroy(Elem *e, int n, void *out)
 }
 
 
-int
+static int
 readjson(JSON *j, Elem* e, int n, void *out)
 {
 	int i;
@@ -308,7 +308,7 @@ readjson(JSON *j, Elem* e, int n, void *out)
 	return 0;
 }
 
-int
+static int
 readjsonhttp(int meth, char *url, PArray *pa, Elem* e, int n, void *out)
 {
 	JSON *j, *err;
@@ -332,7 +332,7 @@ readjsonhttp(int meth, char *url, PArray *pa, Elem* e, int n, void *out)
 	return 0;
 }
 
-int
+static int
 webfsctl(char *cmd)
 {
 	int fd;
@@ -350,7 +350,7 @@ webfsctl(char *cmd)
 	return 0;
 }
 
-int
+static int
 flowinit(char *issuer, Discovery *disc)
 {
 	char buf[1024];
@@ -373,7 +373,7 @@ flowinit(char *issuer, Discovery *disc)
 	return 0;
 }
 
-int
+static int
 updatekey(Key *k, char *issuer, char *client_id, Tokenresp *tr)
 {
 	setattr(k->attr, "proto=oauth issuer=%q client_id=%q token_type=%q exptime=%ld scope=%q",
@@ -385,7 +385,7 @@ updatekey(Key *k, char *issuer, char *client_id, Tokenresp *tr)
 	return 0;
 }
 
-int
+static int
 refreshflow(Key *k, char *issuer, char *scope, char *client_id, char *refresh_token)
 {
 	Pair p[2];
@@ -435,7 +435,7 @@ refreshflow(Key *k, char *issuer, char *scope, char *client_id, char *refresh_to
 	return r;
 }
 
-int
+static int
 refresh(Key *k)
 {
 	char *issuer;
