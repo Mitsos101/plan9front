@@ -17,6 +17,424 @@ bindwebfs(void)
 	return 0;
 }
 
+char *mtpt = "/mnt/web";
+
+enum
+{
+	Httpget,
+	Httppost,
+};
+
+
+typedef struct Pair Pair;
+struct Pair
+{
+	char *s;
+	char *t;
+};
+
+typedef struct PArray PArray;
+struct PArray
+{
+	int n;
+	Pair *p;
+};
+
+typedef struct Elem Elem;
+struct Elem
+{
+	char *name;
+	int type;
+	long off;
+	int required;
+};
+
+static char *typename[] =
+{
+	[JSONNull] "JSONNull",
+	[JSONBool] "JSONBool",
+	[JSONNumber] "JSONNumber",
+	[JSONString] "JSONString",
+	[JSONArray] "JSONArray",
+	[JSONObject] "JSONObject",
+};
+
+typedef struct Discovery Discovery;
+struct Discovery
+{
+	char *device_authorization_endpoint;
+	char *token_endpoint;
+	char *userinfo_endpoint;
+};
+
+static Elem discelems[] =
+{
+	{"device_authorization_endpoint", JSONString, offsetof(Discovery, device_authorization_endpoint), 1},
+	{"token_endpoint", JSONString, offsetof(Discovery, token_endpoint), 1},
+	{"userinfo_endpoint", JSONString, offsetof(Discovery, userinfo_endpoint), 1},
+};
+
+typedef struct Deviceresp Deviceresp;
+struct Deviceresp
+{
+	char *device_code;
+	char *user_code;
+	char *verification_url; /* this should be verification_uri according to rfc8628 but google uses this */
+	double expires_in;
+	double interval;
+};
+
+static Elem drelems[] =
+{
+	{"device_code", JSONString, offsetof(Deviceresp, device_code), 1},
+	{"user_code", JSONString, offsetof(Deviceresp, user_code), 1},
+	{"verification_url", JSONString, offsetof(Deviceresp, verification_url), 1},
+	{"expires_in", JSONNumber, offsetof(Deviceresp, expires_in), 1},
+	{"interval", JSONNumber, offsetof(Deviceresp, interval), 0},
+};
+
+typedef struct Tokenresp Tokenresp;
+struct Tokenresp
+{
+	char *access_token;
+	char *id_token;
+	char *token_type;
+	double expires_in;
+	char *refresh_token;
+	char *scope;
+};
+
+static Elem trelems[] =
+{
+	{"access_token", JSONString, offsetof(Tokenresp, access_token), 1},
+	{"id_token", JSONString, offsetof(Tokenresp, id_token), 0},
+	{"token_type", JSONString, offsetof(Tokenresp, token_type), 1},
+	{"expires_in", JSONNumber, offsetof(Tokenresp, expires_in), 1}, /* this is set to required for simplicity */
+	{"refresh_token", JSONString, offsetof(Tokenresp, refresh_token), 0},
+	{"scope", JSONString, offsetof(Tokenresp, scope), 0},
+};
+
+#pragma varargck	type	"P"	Pair*
+#pragma varargck	type	"L"	PArray*
+
+static int
+parrayfmt(Fmt *f)
+{
+	PArray *pa;
+	int i, r;
+
+	r = 0;
+	pa = va_arg(f->args, PArray*);
+	if(pa == nil)
+		return 0;
+	for(i = 0; i < pa->n; i++){
+		if(i != 0) r += fmtprint(f, "&");
+		r += fmtprint(f, "%P", &pa->p[i]);
+	}
+
+	return r;
+}
+
+static int
+pairfmt(Fmt *f)
+{
+	Pair *p;
+	int r;
+
+	r = 0;
+	p = va_arg(f->args, Pair*);
+	r += fmtprint(f, "%U=%U", p->s, p->t);
+
+	return r;
+}
+
+static char*
+readall(int fd)
+{
+	char buf[1024], *s;
+	int n, tot;
+
+	s = nil;
+	for(tot = 0; (n = read(fd, buf, (long)sizeof buf)) > 0; tot += n){
+		s = erealloc(s, tot + n + 1);
+		memcpy(s + tot, buf, n);
+	}
+	if(n < 0){
+		free(s);
+		werrstr("read: %r");
+		return nil;
+	}
+
+	s[tot] = '\0';
+	return s;
+}
+
+static char*
+dohttp(int meth, char *url, PArray *pa)
+{
+	char buf[1024], *s;
+	int ctlfd, fd, conn, n;
+
+	s = nil;
+	fd = -1;
+	snprint(buf, sizeof buf, "%s/clone", mtpt);
+	if((ctlfd = open(buf, ORDWR)) < 0){
+		werrstr("couldn't open %s: %r", buf);
+		return nil;
+	}
+	if((n = read(ctlfd, buf, sizeof buf-1)) < 0){
+		werrstr("reading clone: %r");
+		goto out;
+	}
+	if(n == 0){
+		werrstr("short read on clone");
+		goto out;
+	}
+	buf[n] = '\0';
+	conn = atoi(buf);
+
+	switch(meth){
+		case Httpget:
+			if(fprint(ctlfd, "url %s?%L", url, pa) < 0){
+				werrstr("url ctl write: %r");
+				goto out;
+			}
+			break;
+		case Httppost:
+			if(fprint(ctlfd, "url %s", url) < 0){
+				werrstr("url ctl write: %r");
+				goto out;
+			}
+			snprint(buf, sizeof buf, "%s/%d/postbody", mtpt, conn);
+			if((fd = open(buf, OWRITE)) < 0){
+				werrstr("open %s: %r", buf);
+				goto out;
+			}
+			if(fprint(fd, "%L", pa) < 0){
+				werrstr("post write failed: %r");
+				goto out;
+			}
+			close(fd);
+			break;
+	}
+
+	snprint(buf, sizeof buf, "%s/%d/body", mtpt, conn);
+	if((fd = open(buf, OREAD)) < 0){
+		werrstr("open %s: %r", buf);
+		goto out;
+	}
+
+	if((s = readall(fd)) == nil){
+		werrstr("readall: %r");
+		goto out;
+	}
+
+	out:
+	if(ctlfd >= 0)
+		close(ctlfd);
+	if(fd >= 0)
+		close(fd);
+	return s;
+}
+
+static JSON*
+jsonhttp(int meth, char *url, PArray *pa)
+{
+	char *resp;
+	JSON *j;
+
+	if((resp = dohttp(meth, url, pa)) == nil){
+		werrstr("dohttp: %r");
+		return nil;
+	}
+
+	if((j = jsonparse(resp)) == nil){
+		werrstr("jsonparse: %r");
+		return nil;
+	}
+
+	return j;
+}
+
+void
+jsondestroy(Elem *e, int n, void *out)
+{
+	int i;
+
+	for(i = 0; i < n; i++){
+		if(e[i].type == JSONString){
+			free(*(char **)((char*)out + e[i].off));
+			*(char**)((char*)out + e[i].off) = nil;
+		}
+	}
+}
+
+
+int
+readjson(JSON *j, Elem* e, int n, void *out)
+{
+	int i;
+	JSON *t;
+	for(i = 0; i < n; i++){
+		if((t = jsonbyname(j, e[i].name)) == nil){
+			if(!e[i].required)
+				continue;
+			werrstr("jsonbyname: %r");
+			jsondestroy(e, n, out);
+			return -1;
+		}
+		if(e[i].type != t->t){
+			werrstr("types for key %s do not match: need %s, got %s", e[i].name, typename[e[i].type], typename[t->t]);
+			jsondestroy(e, n, out);
+			return -1;
+		}
+		switch(e[i].type){
+		default:
+			werrstr("no way to read type %s", typename[e[i].type]);
+			jsondestroy(e, n, out);
+			return -1;
+		case JSONNumber:
+			*(double *)((char*)out + e[i].off) = t->n;
+			break;
+		case JSONString:
+			if((*(char **)((char*)out + e[i].off) = strdup(t->s)) == nil){
+				werrstr("strdup: %r");
+				jsondestroy(e, n, out);
+				return -1;
+			}
+			break;
+		}
+	}
+	return 0;
+}
+
+int
+readjsonhttp(int meth, char *url, PArray *pa, Elem* e, int n, void *out)
+{
+	JSON *j, *err;
+	int r;
+	if((j = jsonhttp(meth, url, pa)) == nil){
+		werrstr("jsonhttp: %r");
+		return -1;
+	}
+	/* check for error key for better diagnostics */
+	if((err = jsonbyname(j, "error")) != nil && err->t == JSONString){
+		werrstr("%s", err->s);
+		jsonfree(j);
+		return -1;
+	}
+	r = readjson(j, e, n, out);
+	jsonfree(j);
+	if(r < 0){
+		werrstr("readjson: %r");
+		return -1;
+	}
+	return 0;
+}
+
+int
+webfsctl(char *cmd)
+{
+	int fd;
+	char buf[1024];
+
+	snprint(buf, sizeof buf, "%s/ctl", mtpt);
+	if((fd = open(buf, OWRITE)) < 0){
+		werrstr("open %s: %r", buf);
+		return -1;
+	}
+	if(fprint(fd, "%s", cmd) < 0){
+		werrstr("write %s: %r", buf);
+		return -1;
+	}
+	return 0;
+}
+
+int
+flowinit(char *issuer, Discovery *disc)
+{
+	char buf[1024];
+	int r;
+
+	snprint(buf, sizeof buf, "%s%s", issuer, "/.well-known/openid-configuration");
+	r = readjsonhttp(Httpget, buf, nil, discelems, nelem(discelems), disc);
+	if(r < 0){
+		werrstr("readjsonhttp openid-configuration: %r");
+		return r;
+	}
+
+	snprint(buf, sizeof buf, "preauth %s %s", disc->token_endpoint, "oauth");
+	r = webfsctl(buf);
+	if(r < 0){
+		werrstr("webfsctl: %r");
+		return r;
+	}
+
+	return 0;
+}
+
+int
+printkey(char *issuer, char *client_id, Tokenresp *tr)
+{
+	print("key proto=oauth issuer=%q client_id=%q token_type=%q exptime=%ld !access_token=%q scope=%q",
+	issuer, client_id, tr->token_type, time(0) + (long)tr->expires_in, tr->access_token, tr->scope);
+	if(tr->refresh_token != nil)
+		print(" !refresh_token=%q", tr->refresh_token);
+	print("\n");
+	return 0;
+}
+
+int
+refreshflow(char *issuer, char *scope, char *client_id, char *refresh_token)
+{
+	Pair p[2];
+	Discovery disc;
+	PArray pa;
+	int r;
+	Tokenresp tr;
+
+	memset(&disc, 0, sizeof disc);
+	memset(&tr, 0, sizeof tr);
+
+	r = flowinit(issuer, &disc);
+	if(r < 0){
+		werrstr("flowinit: %r");
+		goto out;
+	}
+
+	pa = (PArray){2, p};
+	p[0] = (Pair){"grant_type", "refresh_token"};
+	p[1] = (Pair){"refresh_token", refresh_token};
+	r = readjsonhttp(Httppost, disc.token_endpoint, &pa, trelems, nelem(trelems), &tr);
+	if(r < 0){
+		werrstr("readjsonhttp token_endpoint: %r");
+		goto out;
+	}
+
+	if(tr.scope == nil)
+		tr.scope = scope;
+	if(tr.refresh_token == nil)
+		tr.refresh_token = refresh_token;
+	r = printkey(issuer, client_id, &tr);
+
+	/* make sure those don't get freed */
+	if(tr.scope == scope)
+		tr.scope = nil;
+	if(tr.refresh_token == refresh_token)
+		tr.refresh_token = nil;
+
+	if(r < 0){
+		werrstr("printkey: %r");
+		goto out;
+	}
+	r = 0;
+	out:
+	jsondestroy(discelems, nelem(discelems), &disc);
+	jsondestroy(trelems, nelem(trelems), &tr);
+	return r;
+}
+
+
 
 typedef struct State State;
 struct State
