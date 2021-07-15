@@ -1,4 +1,6 @@
 #include "dat.h"
+#include <httpd.h>
+#include <json.h>
 
 /* webfs and factotum need to be in the same namespace */
 static int
