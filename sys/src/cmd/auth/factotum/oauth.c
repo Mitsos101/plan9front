@@ -8,7 +8,7 @@ bindwebfs(void)
 {
 	int srvfd;
 
-	if(access("/mnt/web", AEXIST) < 0){
+	if(access("/mnt/web/ctl", AEXIST) < 0){
 		if((srvfd = open("#s/web", ORDWR)) >= 0){
 			if(mount(srvfd, -1, "/mnt", MBEFORE, "") != -1)
 				return 0;
