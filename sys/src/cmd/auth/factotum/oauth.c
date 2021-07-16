@@ -444,6 +444,7 @@ refresh(Key *k)
 	char *scope;
 	char *client_id;
 	char *refresh_token;
+	char *exptime;
 
 	if((issuer = _strfindattr(k->attr, "issuer")) == nil){
 		werrstr("issuer missing");
@@ -461,6 +462,8 @@ refresh(Key *k)
 		werrstr("refresh_token missing");
 		return -1;
 	}
+	if((exptime = _strfindattr(k->attr, "exptime")) != nil && atol(exptime) < time(0))
+		return 0;
 
 	fmtinstall('U', hurlfmt);
 	fmtinstall('P', pairfmt);
