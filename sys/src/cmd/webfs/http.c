@@ -418,14 +418,12 @@ authenticate(Url *u, Url *ru, char *method, char *s)
 
 		s += 7;
 		o = auth_getoauth(hauthgetkey, "proto=oauth server=%q", u->host);
-		if(o){
-			fmtstrinit(&fmt);
-			fmtprint(&fmt, "Bearer %s", o->access_token);
-			free(o);
-			u = saneurl(url(".", u)); /* all uris below the requested one */
-		}else
+		if(o == nil)
 			return -1;
-		}
+		fmtstrinit(&fmt);
+		fmtprint(&fmt, "Bearer %s", o->access_token);
+		free(o);
+		u = saneurl(url(".", u)); /* all uris below the requested one */
 	}else{
 	if(!cistrncmp(s, "Digest ", 7)){
 		char chal[1024], ouser[128], resp[2*MD5LEN+1];
