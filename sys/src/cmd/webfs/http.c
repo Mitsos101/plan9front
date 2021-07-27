@@ -412,7 +412,7 @@ authenticate(Url *u, Url *ru, char *method, char *s)
 		memset(s, 0, n);
 		free(s);
 		u = saneurl(url(".", u));	/* all uris below the requested one */
-	}else{
+	}else
 	if(!cistrncmp(s, "Bearer ", 7)){
 		OAuth *o;
 
@@ -424,7 +424,7 @@ authenticate(Url *u, Url *ru, char *method, char *s)
 		fmtprint(&fmt, "Bearer %s", o->access_token);
 		free(o);
 		u = saneurl(url(".", u)); /* all uris below the requested one */
-	}else{
+	}else
 	if(!cistrncmp(s, "Digest ", 7)){
 		char chal[1024], ouser[128], resp[2*MD5LEN+1];
 		int nchal;
