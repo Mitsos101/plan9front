@@ -462,7 +462,7 @@ refresh(Key *k)
 		werrstr("refresh_token missing");
 		return -1;
 	}
-	if((exptime = _strfindattr(k->attr, "exptime")) != nil && atol(exptime) <= time(0))
+	if((exptime = _strfindattr(k->attr, "exptime")) != nil && atol(exptime) >= time(0))
 		return 0;
 
 	fmtinstall('U', hurlfmt);
