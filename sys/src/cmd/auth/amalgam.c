@@ -162,7 +162,7 @@ httpconnect(char *host)
 	Pfd *pfd;
 	int fd;
 
-	snprint(buf, sizeof buf, "tcp!%s!http", host);
+	snprint(buf, sizeof buf, "tcp!%s!https", host);
 	if((fd = dial(buf, nil, nil, nil)) < 0)
 		return nil;
 	if((fd = tlswrap(fd, host)) < 0)
@@ -412,7 +412,7 @@ deviceflow(char *issuer, char *scope, char *client_id, char *client_secret)
 
 	r = discoveryget(issuer, &disc);
 	if(r < 0){
-		werrstr("flowinit: %r");
+		werrstr("discoveryget: %r");
 		goto out;
 	}
 
