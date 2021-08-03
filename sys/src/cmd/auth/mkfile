@@ -3,6 +3,7 @@
 #		programs
 #
 TARG=\
+	amalgam\
 	as\
 	asaudit\
 	asn1dump\
