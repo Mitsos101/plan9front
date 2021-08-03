@@ -670,7 +670,7 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 	proto->close(fd);
 
 	if(hdr->contentlength >= 0 && total != hdr->contentlength){
-		werrstr("got wrong content size %ld %ld", total, hdr->contentlength);
+		werrstr("got wrong content size %d %lld", total, hdr->contentlength);
 		return nil;
 	}
 	hdr->contentlength = total;
