@@ -958,7 +958,7 @@ makehttprequest(char *host, char *path, char *postdata, char *user, char *pass)
 		fmtprint(&fmt, "User-Agent: " USER_AGENT "\r\n");
 		if(user){
 			snprint(buf, sizeof buf, "%s:%s", user ? user : "", pass ? pass : "");
-			fmtprint(&fmt, "Authorization: Basic %.*[\r\n", strlen(buf), buf);
+			fmtprint(&fmt, "Authorization: Basic %.*[\r\n", (int)strlen(buf), buf);
 		}
 		fmtprint(&fmt, "Content-Type: application/x-www-form-urlencoded\r\n");
 		fmtprint(&fmt, "Content-Length: %ld\r\n", strlen(postdata));
