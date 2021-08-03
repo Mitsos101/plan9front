@@ -670,7 +670,7 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 	proto->close(fd);
 
 	if(hdr->contentlength >= 0 && total != hdr->contentlength){
-		werrstr("got wrong content size %d %d", total, hdr->contentlength);
+		werrstr("got wrong content size %ld %ld", total, hdr->contentlength);
 		return nil;
 	}
 	hdr->contentlength = total;
@@ -961,7 +961,7 @@ makehttprequest(char *host, char *path, char *postdata, char *user, char *pass)
 			fmtprint(&fmt, "Authorization: Basic %.*[\r\n", strlen(buf), buf);
 		}
 		fmtprint(&fmt, "Content-Type: application/x-www-form-urlencoded\r\n");
-		fmtprint(&fmt, "Content-Length: %d\r\n", strlen(postdata));
+		fmtprint(&fmt, "Content-Length: %ld\r\n", strlen(postdata));
 		fmtprint(&fmt, "\r\n");
 		fmtprint(&fmt, "%s", postdata);
 	} else{
