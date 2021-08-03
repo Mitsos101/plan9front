@@ -90,8 +90,49 @@ void	freeurl(Url *u);
 
 int	idn2utf(char *name, char *buf, int nbuf);
 
-// flows
+int
+writen(int fd, void *buf, int n)
+{
+	long m, tot;
 
+	for(tot=0; tot<n; tot+=m){
+		m = n - tot;
+		if(m > 8192)
+			m = 8192;
+		if(write(fd, (uchar*)buf+tot, m) != m)
+			break;
+	}
+	return tot;
+}
+
+void*
+emalloc(int n)
+{
+	void *v;
+
+	v = mallocz(n, 1);
+	if(v == nil)
+		sysfatal("out of memory");
+	return v;
+}
+
+void*
+erealloc(void *v, int n)
+{
+	v = realloc(v, n);
+	if(v == nil)
+		sysfatal("out of memory");
+	return v;
+}
+
+char*
+estrdup(char *s)
+{
+	s = strdup(s);
+	if(s == nil)
+		sysfatal("out of memory");
+	return s;
+}
 
 struct Pfd
 {
@@ -652,8 +693,6 @@ enum {
 	damp = 700,
 	initial_bias = 72,
 	initial_n = 0x80,
-
-	Domlen = 256,
 };
 
 static uint maxint = ~0;
