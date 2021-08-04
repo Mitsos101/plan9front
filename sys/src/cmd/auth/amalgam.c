@@ -12,8 +12,6 @@
 #include <ctype.h>
 #include <json.h>
 
-int mainstacksize = 32768;
-
 #define USER_AGENT    "oauthtest"
 
 int	urlencodefmt(Fmt*);
@@ -607,7 +605,7 @@ static char*
 genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 {
 	int n, m, total, want;
-	char buf[2048], *data;
+	char buf[1024], *data;
 	Pfd *fd;
 
 	fd = proto->connect(host);
