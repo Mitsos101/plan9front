@@ -156,7 +156,7 @@ tlswrap(int fd, char *servername)
 static Pfd*
 httpconnect(char *host)
 {
-	char buf[1024];
+	char buf[256];
 	Pfd *pfd;
 	int fd;
 
@@ -605,7 +605,7 @@ static char*
 genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 {
 	int n, m, total, want;
-	char buf[1024], *data;
+	char buf[256], *data;
 	Pfd *fd;
 
 	fd = proto->connect(host);
