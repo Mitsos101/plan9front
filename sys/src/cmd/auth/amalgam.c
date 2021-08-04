@@ -604,12 +604,12 @@ parseheader(char *buf, int n, HTTPHeader *hdr)
 static char*
 genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 {
-	int n, m, total, want;
+	int n, m, total, want, size;
 	char *buf, *data;
 	Pfd *fd;
 
 	fd = proto->connect(host);
-	if((buf = malloc(want = 8192)) == nil){
+	if((buf = malloc(size = 8192)) == nil){
 		werrstr("malloc: %r");
 		return nil;
 	}
@@ -629,7 +629,7 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 
 	total = 0;
 	while(!haveheader(buf, total)){
-		n = proto->read(fd, buf+total, want-total);
+		n = proto->read(fd, buf+total, size-total);
 		if(n <= 0){
 			werrstr("read missing header");
 			proto->close(fd);
@@ -658,6 +658,7 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 		n = hdr->contentlength;
 	data = nil;
 	total = 0;
+	want = size;
 	goto didread;
 
 	while(want > 0 && (n = proto->read(fd, buf, want)) > 0){
