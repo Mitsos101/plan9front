@@ -605,12 +605,17 @@ static char*
 genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 {
 	int n, m, total, want;
-	char buf[256], *data;
+	char *buf, *data;
 	Pfd *fd;
 
 	fd = proto->connect(host);
+	if((buf = malloc(want = 8192)) == nil){
+		werrstr("malloc: %r");
+		return nil;
+	}
 	if(fd == nil){
 		werrstr("connect %s: %r", host);
+		free(buf);
 		return nil;
 	}
 
@@ -618,6 +623,7 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 	if(proto->write(fd, req, n) != n){
 		werrstr("write %s: %r", host);
 		proto->close(fd);
+		free(buf);
 		return nil;
 	}
 
@@ -627,6 +633,7 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 		if(n <= 0){
 			werrstr("read missing header");
 			proto->close(fd);
+			free(buf);
 			return nil;
 		}
 		total += n;
@@ -636,6 +643,7 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 	if(n < 0){
 		werrstr("failed response parse: %r");
 		proto->close(fd);
+		free(buf);
 		return nil;
 	}
 	if(hdr->contentlength == 0)
@@ -643,11 +651,11 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 	if(hdr->contentlength >= MaxResponse){
 		werrstr("response too long");
 		proto->close(fd);
+		free(buf);
 		return nil;
 	}
 	if(hdr->contentlength >= 0 && n > hdr->contentlength)
 		n = hdr->contentlength;
-	want = sizeof buf;
 	data = nil;
 	total = 0;
 	goto didread;
@@ -660,6 +668,7 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 		if(total > MaxResponse){
 			proto->close(fd);
 			werrstr("response too long");
+			free(buf);
 			return nil;
 		}
 		if(hdr->contentlength >= 0 && total + want > hdr->contentlength)
@@ -669,11 +678,13 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 
 	if(hdr->contentlength >= 0 && total != hdr->contentlength){
 		werrstr("got wrong content size %d %lld", total, hdr->contentlength);
+		free(buf);
 		return nil;
 	}
 	hdr->contentlength = total;
 	data = erealloc(data, total+1);
 	data[total] = 0;
+	free(buf);
 	return data;
 }
 
