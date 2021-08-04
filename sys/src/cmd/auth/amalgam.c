@@ -12,6 +12,8 @@
 #include <ctype.h>
 #include <json.h>
 
+int mainstacksize = 32768;
+
 #define USER_AGENT    "oauthtest"
 
 int	urlencodefmt(Fmt*);
