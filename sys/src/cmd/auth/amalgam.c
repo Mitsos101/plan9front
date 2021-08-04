@@ -605,7 +605,7 @@ static char*
 genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 {
 	int n, m, total, want;
-	char buf[8192], *data;
+	char buf[2048], *data;
 	Pfd *fd;
 
 	fd = proto->connect(host);
