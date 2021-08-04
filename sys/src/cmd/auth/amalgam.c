@@ -629,7 +629,7 @@ genhttp(Protocol *proto, char *host, char *req, HTTPHeader *hdr)
 
 	total = 0;
 	while(!haveheader(buf, total)){
-		n = proto->read(fd, buf+total, sizeof buf-total);
+		n = proto->read(fd, buf+total, want-total);
 		if(n <= 0){
 			werrstr("read missing header");
 			proto->close(fd);
