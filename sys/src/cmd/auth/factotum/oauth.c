@@ -1,9 +1,6 @@
 #include "dat.h"
-#include <httpd.h>
 #include <json.h>
-
 #include <ctype.h>
-#include <json.h>
 
 #define USER_AGENT    "oauthtest"
 
@@ -98,34 +95,6 @@ writen(int fd, void *buf, int n)
 	return tot;
 }
 
-void*
-emalloc(int n)
-{
-	void *v;
-
-	v = mallocz(n, 1);
-	if(v == nil)
-		sysfatal("out of memory");
-	return v;
-}
-
-void*
-erealloc(void *v, int n)
-{
-	v = realloc(v, n);
-	if(v == nil)
-		sysfatal("out of memory");
-	return v;
-}
-
-char*
-estrdup(char *s)
-{
-	s = strdup(s);
-	if(s == nil)
-		sysfatal("out of memory");
-	return s;
-}
 
 struct Pfd
 {
