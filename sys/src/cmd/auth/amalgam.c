@@ -339,11 +339,12 @@ discoveryget(char *issuer, Discovery *disc)
 
 	if((u = saneurl(url(issuer))) == nil){
 		werrstr("url parsing error");
-		return nil;
+		return -1;
 	}
 
 	snprint(buf, sizeof buf, "%s%s", u->path, "/.well-known/openid-configuration");
 	jv = jsonrpc(&https, u->host, buf, nil, nil, nil);
+	freeurl(u);
 	if(jv == nil){
 		werrstr("jsonrpc: %r");
 		return -1;
