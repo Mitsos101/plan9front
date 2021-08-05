@@ -474,7 +474,7 @@ refreshflow(Key *k, char *issuer, char *scope, char *client_id, char *client_sec
 		goto out;
 	}
 
-	r = updatekey(k, issuer, client_id, client_secret, scope, j);
+	r = updatekey(k, j);
 	if(r < 0){
 		werrstr("updatekey: %r");
 		goto out;
