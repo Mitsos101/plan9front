@@ -218,6 +218,7 @@ struct Discovery
 	char *authorization_endpoint;
 	char *token_endpoint;
 	char *device_authorization_endpoint;
+	char *issuer;
 };
 
 static Elem discelems[] =
@@ -225,6 +226,7 @@ static Elem discelems[] =
 	{"authorization_endpoint", JSONString, offsetof(Discovery, authorization_endpoint)},
 	{"token_endpoint", JSONString, offsetof(Discovery, token_endpoint)},
 	{"device_authorization_endpoint", JSONString, offsetof(Discovery, device_authorization_endpoint)},
+	{"issuer", JSONString, offsetof(Discovery, issuer)},
 };
 
 typedef struct Tokenresp Tokenresp;
@@ -331,10 +333,17 @@ readjson(JSON *j, Elem* e, int n, void *out)
 int
 discoveryget(char *issuer, Discovery *disc)
 {
-	/* TODO: support multiple issuers per host and validate the issuer */
 	JSON *jv;
+	Url *u;
+	char buf[256];
 
-	jv = jsonrpc(&https, issuer, "/.well-known/openid-configuration", nil, nil, nil);
+	if((u = saneurl(url(issuer))) == nil){
+		werrstr("url parsing error");
+		return nil;
+	}
+
+	snprint(buf, sizeof buf, "%s%s", u->path, "/.well-known/openid-configuration");
+	jv = jsonrpc(&https, u->host, buf, nil, nil, nil);
 	if(jv == nil){
 		werrstr("jsonrpc: %r");
 		return -1;
@@ -348,11 +357,19 @@ discoveryget(char *issuer, Discovery *disc)
 
 	if(disc->authorization_endpoint == nil){
 		werrstr("no authorization_endpoint");
+		jsonfree(jv);
 		return -1;
 	}
 
 	if(disc->token_endpoint == nil){
 		werrstr("no token_endpoint");
+		jsonfree(jv);
+		return -1;
+	}
+
+	if(strcmp(issuer, disc->issuer) != 0){
+		werrstr("issuers don't match");
+		jsonfree(jv);
 		return -1;
 	}
 
