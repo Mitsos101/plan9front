@@ -107,6 +107,8 @@ tlswrap(int fd, char *servername)
 	TLSconn conn;
 
 	memset(&conn, 0, sizeof(conn));
+	if(servername != nil)
+		conn.serverName = servername;
 	if((fd = tlsClient(fd, &conn)) < 0){
 		werrstr("tlsClient: %r");
 	}
