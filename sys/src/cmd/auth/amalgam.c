@@ -342,7 +342,7 @@ discoveryget(char *issuer, Discovery *disc)
 		return -1;
 	}
 
-	snprint(buf, sizeof buf, "%s%s", u->path, "/.well-known/openid-configuration");
+	snprint(buf, sizeof buf, "%s%s", u->path ? u->path : "", "/.well-known/openid-configuration");
 	jv = jsonrpc(&https, u->host, buf, nil, nil, nil);
 	freeurl(u);
 	if(jv == nil){
