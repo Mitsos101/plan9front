@@ -368,6 +368,12 @@ discoveryget(char *issuer, Discovery *disc)
 		return -1;
 	}
 
+	if(disc->issuer == nil){
+		werrstr("no issuer");
+		jsonfree(jv);
+		return -1;
+	}
+
 	if(strcmp(issuer, disc->issuer) != 0){
 		werrstr("issuers don't match");
 		jsonfree(jv);
