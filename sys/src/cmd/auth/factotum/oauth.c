@@ -246,246 +246,24 @@ static char *typename[] =
 	[JSONObject] "JSONObject",
 };
 
-void
-jsondestroy(Elem *e, int n, void *out)
-{
-	int i;
-
-	for(i = 0; i < n; i++){
-		if(e[i].type == JSONString){
-			free(*(char **)((char*)out + e[i].off));
-			*(char**)((char*)out + e[i].off) = nil;
-		}
-	}
-}
-
 int
-readjson(JSON *j, Elem* e, int n, void *out)
+urlencodefmt(Fmt *fmt)
 {
-	int i;
-	JSON *t;
-	for(i = 0; i < n; i++){
-		if((t = jsonbyname(j, e[i].name)) == nil){
-			/* it's okay if a key is missing */
-			continue;
-		}
-		if(e[i].type != t->t){
-			werrstr("types for key %s do not match: need %s, got %s", e[i].name, typename[e[i].type], typename[t->t]);
-			jsondestroy(e, n, out);
-			return -1;
-		}
-		switch(e[i].type){
-		default:
-			werrstr("no way to read type %s", typename[e[i].type]);
-			jsondestroy(e, n, out);
-			return -1;
-		case JSONNumber:
-			*(double *)((char*)out + e[i].off) = t->n;
-			break;
-		case JSONString:
-			if((*(char **)((char*)out + e[i].off) = strdup(t->s)) == nil){
-				werrstr("strdup: %r");
-				jsondestroy(e, n, out);
-				return -1;
-			}
-			break;
-		}
+	int x;
+	char *s;
+
+	s = va_arg(fmt->args, char*);
+	for(; *s; s++){
+		x = (uchar)*s;
+		if(x == ' ')
+			fmtrune(fmt, '+');
+		else if(('a' <= x && x <= 'z') || ('A' <= x && x <= 'Z') || ('0' <= x && x <= '9')
+			|| strchr("$-_.+!*'()", x)){
+			fmtrune(fmt, x);
+		}else
+			fmtprint(fmt, "%%%02ux", x);
 	}
 	return 0;
-}
-
-int
-discoveryget(char *issuer, Discovery *disc)
-{
-	JSON *jv;
-	Url *u;
-	char buf[256];
-
-	if((u = saneurl(url(issuer))) == nil){
-		werrstr("url parsing error");
-		return -1;
-	}
-
-	snprint(buf, sizeof buf, "%s%s", u->path ? u->path : "", "/.well-known/openid-configuration");
-	jv = jsonrpc(&https, u->host, buf, nil, nil, nil);
-	freeurl(u);
-	if(jv == nil){
-		werrstr("jsonrpc: %r");
-		return -1;
-	}
-
-	if(readjson(jv, discelems, nelem(discelems), disc) < 0){
-		werrstr("readjson: %r");
-		jsonfree(jv);
-		return -1;
-	}
-
-	if(disc->authorization_endpoint == nil){
-		werrstr("no authorization_endpoint");
-		jsonfree(jv);
-		return -1;
-	}
-
-	if(disc->token_endpoint == nil){
-		werrstr("no token_endpoint");
-		jsonfree(jv);
-		return -1;
-	}
-
-	if(disc->issuer == nil){
-		werrstr("no issuer");
-		jsonfree(jv);
-		return -1;
-	}
-
-	if(strcmp(issuer, disc->issuer) != 0){
-		werrstr("issuers don't match");
-		jsonfree(jv);
-		return -1;
-	}
-
-	return 0;
-
-}
-
-int
-updatekey(Key *k, JSON *j)
-{
-	Tokenresp tr;
-	long exptime;
-
-	memset(&tr, 0, sizeof tr);
-	if(readjson(j, trelems, nelem(trelems), &tr) < 0){
-		werrstr("readjson: %r");
-		return -1;
-	}
-	if(tr.token_type == nil || tr.access_token == nil){
-		werrstr("missing key");
-		jsondestroy(trelems, nelem(trelems), &tr);
-		return -1;
-	}
-
-
-	if(tr.expires_in == 0)
-		tr.expires_in = (long)1800; /* picked at random */
-
-	exptime = time(0) + (long)tr.expires_in;
-
-	/* do not modify scope if the server modifies it, as we can't match on the scope if we change it */
-	setattr(k->attr, "token_type=%q exptime=%ld", tr.token_type, exptime);
-	setattr(k->privattr, "!access_token=%q", tr.access_token);
-	if(tr.refresh_token != nil)
-		setattr(k->privattr, "!refresh_token=%q", tr.refresh_token);
-
-
-	jsondestroy(trelems, nelem(trelems), &tr);
-	return 0;
-}
-
-
-int
-deviceflow(Key *k, char *issuer, char *scope, char *client_id, char *client_secret)
-{
-	char errbuf[ERRMAX];
-	Discovery disc;
-	Deviceresp dr;
-	JSON *j;
-	int r;
-
-	memset(&disc, 0, sizeof disc);
-	memset(&dr, 0, sizeof dr);
-
-	r = discoveryget(issuer, &disc);
-	if(r < 0){
-		werrstr("discoveryget: %r");
-		goto out;
-	}
-
-	dr.interval = 5;
-	j = urlpost(disc.device_authorization_endpoint, nil, nil, "scope", scope, "client_id", client_id, nil);
-	if(j == nil){
-		r = -1;
-		werrstr("urlpost device_authorization_endpoint: %r");
-		goto out;
-	}
-	r = readjson(j, drelems, nelem(drelems), &dr);
-	if(r < 0){
-		werrstr("readjson: %r");
-		goto out;
-	}
-	if(dr.verification_uri == nil || dr.user_code == nil || dr.device_code == nil){
-		r = -1;
-		werrstr("missing key");
-		goto out;
-	}
-	fprint(2, "verification_uri=%q user_code=%q", dr.verification_uri, dr.user_code);
-	for(;;sleep((long)dr.interval * 1000L)){
-		j = urlpost(disc.token_endpoint, client_id, client_secret,
-		            "grant_type", "urn:ietf:params:oauth:grant-type:device_code",
-		            "device_code", dr.device_code,
-		            nil);
-		if(j == nil){
-			/* check for special errors, don't give up yet */
-			rerrstr(errbuf, sizeof errbuf);
-			if(strstr(errbuf, "authorization_pending") != nil){
-				continue;
-			}
-			if(strstr(errbuf, "slow_down") != nil){
-				dr.interval += 5;
-				continue;
-			}
-			r = -1;
-			werrstr("urlpost token_endpoint: %r");
-			goto out;
-		}
-		break;
-	}
-	r = updatekey(k, j);
-	if(r < 0){
-		werrstr("updatekey: %r");
-		goto out;
-	}
-	r = 0;
-	out:
-	jsondestroy(drelems, nelem(drelems), &dr);
-	jsondestroy(discelems, nelem(discelems), &disc);
-	return r;
-}
-
-int
-refreshflow(Key *k, char *issuer, char *scope, char *client_id, char *client_secret, char *refresh_token)
-{
-	Discovery disc;
-	JSON *j;
-	int r;
-
-	r = discoveryget(issuer, &disc);
-	if(r < 0){
-		werrstr("discoveryget: %r");
-		goto out;
-	}
-
-	j = urlpost(disc.token_endpoint, client_id, client_secret,
-	            "grant_type", "refresh_token",
-	            "refresh_token", refresh_token,
-	            nil);
-
-	if(j == nil){
-		r = -1;
-		werrstr("urlpost: %r");
-		goto out;
-	}
-
-	r = updatekey(k, j);
-	if(r < 0){
-		werrstr("updatekey: %r");
-		goto out;
-	}
-
-	r = 0;
-	out:
-	jsondestroy(discelems, nelem(discelems), &disc);
-	return r;
 }
 
 static char*
@@ -1368,85 +1146,290 @@ freeurl(Url *u)
 	free(u);
 }
 
-int
-urlencodefmt(Fmt *fmt)
-{
-	int x;
-	char *s;
 
-	s = va_arg(fmt->args, char*);
-	for(; *s; s++){
-		x = (uchar)*s;
-		if(x == ' ')
-			fmtrune(fmt, '+');
-		else if(('a' <= x && x <= 'z') || ('A' <= x && x <= 'Z') || ('0' <= x && x <= '9')
-			|| strchr("$-_.+!*'()", x)){
-			fmtrune(fmt, x);
-		}else
-			fmtprint(fmt, "%%%02ux", x);
+void
+jsondestroy(Elem *e, int n, void *out)
+{
+	int i;
+
+	for(i = 0; i < n; i++){
+		if(e[i].type == JSONString){
+			free(*(char **)((char*)out + e[i].off));
+			*(char**)((char*)out + e[i].off) = nil;
+		}
+	}
+}
+
+int
+readjson(JSON *j, Elem* e, int n, void *out)
+{
+	int i;
+	JSON *t;
+	for(i = 0; i < n; i++){
+		if((t = jsonbyname(j, e[i].name)) == nil){
+			/* it's okay if a key is missing */
+			continue;
+		}
+		if(e[i].type != t->t){
+			werrstr("types for key %s do not match: need %s, got %s", e[i].name, typename[e[i].type], typename[t->t]);
+			jsondestroy(e, n, out);
+			return -1;
+		}
+		switch(e[i].type){
+		default:
+			werrstr("no way to read type %s", typename[e[i].type]);
+			jsondestroy(e, n, out);
+			return -1;
+		case JSONNumber:
+			*(double *)((char*)out + e[i].off) = t->n;
+			break;
+		case JSONString:
+			if((*(char **)((char*)out + e[i].off) = strdup(t->s)) == nil){
+				werrstr("strdup: %r");
+				jsondestroy(e, n, out);
+				return -1;
+			}
+			break;
+		}
 	}
 	return 0;
 }
 
-static int
-refresh(Key *k)
+int
+discoveryget(char *issuer, Discovery *disc)
 {
-	char *issuer;
-	char *scope;
-	char *client_id;
-	char *client_secret;
-	char *refresh_token;
-	char *exptime;
+	JSON *jv;
+	Url *u;
+	char buf[256];
 
-	if((issuer = _strfindattr(k->attr, "issuer")) == nil){
-		werrstr("issuer missing");
+	if((u = saneurl(url(issuer))) == nil){
+		werrstr("url parsing error");
 		return -1;
 	}
-	if((scope = _strfindattr(k->attr, "scope")) == nil){
-		werrstr("scope missing");
-		return -1;
-	}
-	if((client_id = _strfindattr(k->attr, "client_id")) == nil){
-		werrstr("client_id missing");
-		return -1;
-	}
-	if((client_secret = _strfindattr(k->privattr, "!client_secret")) == nil){
-		werrstr("client_secret missing");
-		return -1;
-	}
-	if((refresh_token = _strfindattr(k->privattr, "!refresh_token")) == nil){
-		werrstr("refresh_token missing");
-		return -1;
-	}
-	if((exptime = _strfindattr(k->attr, "exptime")) != nil && atol(exptime) >= time(0))
-		return 0;
 
-	fmtinstall('U', urlencodefmt);
-	fmtinstall('J', JSONfmt);
-	if(refreshflow(k, issuer, scope, client_id, client_secret, refresh_token) < 0){
-		werrstr("refreshflow: %r");
+	snprint(buf, sizeof buf, "%s%s", u->path ? u->path : "", "/.well-known/openid-configuration");
+	jv = jsonrpc(&https, u->host, buf, nil, nil, nil);
+	freeurl(u);
+	if(jv == nil){
+		werrstr("jsonrpc: %r");
 		return -1;
 	}
-	return replacekey(k, 0);
+
+	if(readjson(jv, discelems, nelem(discelems), disc) < 0){
+		werrstr("readjson: %r");
+		jsonfree(jv);
+		return -1;
+	}
+
+	if(disc->authorization_endpoint == nil){
+		werrstr("no authorization_endpoint");
+		jsonfree(jv);
+		return -1;
+	}
+
+	if(disc->token_endpoint == nil){
+		werrstr("no token_endpoint");
+		jsonfree(jv);
+		return -1;
+	}
+
+	if(disc->issuer == nil){
+		werrstr("no issuer");
+		jsonfree(jv);
+		return -1;
+	}
+
+	if(strcmp(issuer, disc->issuer) != 0){
+		werrstr("issuers don't match");
+		jsonfree(jv);
+		return -1;
+	}
+
+	return 0;
+
 }
 
+int
+updatekey(Key *k, JSON *j)
+{
+	Tokenresp tr;
+	long exptime;
+
+	memset(&tr, 0, sizeof tr);
+	if(readjson(j, trelems, nelem(trelems), &tr) < 0){
+		werrstr("readjson: %r");
+		return -1;
+	}
+	if(tr.token_type == nil || tr.access_token == nil){
+		werrstr("missing key");
+		jsondestroy(trelems, nelem(trelems), &tr);
+		return -1;
+	}
+
+
+	if(tr.expires_in == 0)
+		tr.expires_in = (long)1800; /* picked at random */
+
+	exptime = time(0) + (long)tr.expires_in;
+
+	/* do not modify scope if the server modifies it, as we can't match on the scope if we change it */
+	setattr(k->attr, "token_type=%q exptime=%ld", tr.token_type, exptime);
+	setattr(k->privattr, "!access_token=%q", tr.access_token);
+	if(tr.refresh_token != nil)
+		setattr(k->privattr, "!refresh_token=%q", tr.refresh_token);
+
+
+	jsondestroy(trelems, nelem(trelems), &tr);
+	return 0;
+}
+
+int
+refreshflow(Discovery *disc, Key *k, char *issuer, char *scope, char *client_id, char *client_secret, char *refresh_token)
+{
+	JSON *j;
+	int r;
+
+	j = urlpost(disc->token_endpoint, client_id, client_secret,
+	            "grant_type", "refresh_token",
+	            "refresh_token", refresh_token,
+	            nil);
+
+	if(j == nil){
+		r = -1;
+		werrstr("urlpost: %r");
+		goto out;
+	}
+
+	r = updatekey(k, j);
+	if(r < 0){
+		werrstr("updatekey: %r");
+		goto out;
+	}
+
+	r = 0;
+	out:
+	return r;
+}
 
 typedef struct State State;
 struct State
 {
 	Key *key;
+	char *issuer;
+	char *scope;
+	char *client_id;
+	char *client_secret;
+	char *exptime;
+	char *device_code;
+	Discovery disc;
 };
 
 enum
 {
+	NeedDeviceCode,
+	NeedUserConsent,
 	HaveToken,
 	Maxphase,
 };
 
+static struct
+{
+	char *name;
+	long off;
+} keyfields[] =
+{
+	{"issuer", offsetof(State, issuer)},
+	{"scope", offsetof(State, scope)},
+	{"client_id", offsetof(State, client_id)},
+	{"client_secret", offsetof(State, client_secret)},
+	{"exptime", offsetof(State, exptime)},
+};
+
 static char *phasenames[Maxphase] =
 {
+[NeedDeviceCode] "NeedDeviceCode",
+[NeedUserConsent] "NeedUserConsent",
 [HaveToken]	"HaveToken",
 };
+
+int
+deviceflow1(Fsstate *fss)
+{
+	Deviceresp dr;
+	JSON *j;
+	int r;
+	State *s;
+
+	s = fss->ps;
+	memset(&dr, 0, sizeof dr);
+
+	dr.interval = 5;
+	j = urlpost(disc.device_authorization_endpoint, nil, nil, "scope", s->scope, "client_id", s->client_id, nil);
+	if(j == nil){
+		r = -1;
+		werrstr("urlpost device_authorization_endpoint: %r");
+		goto out;
+	}
+	r = readjson(j, drelems, nelem(drelems), &dr);
+	if(r < 0){
+		werrstr("readjson: %r");
+		goto out;
+	}
+	if(dr.verification_uri == nil || dr.user_code == nil || dr.device_code == nil){
+		r = -1;
+		werrstr("missing key");
+		goto out;
+	}
+	snprint(fss->keyinfo, sizeof fss->keyinfo, "%A verification_uri=%q user_code=%q", s->key->attr, dr.verification_uri, dr.user_code);
+	r = 0;
+	out:
+	s->device_code = estrdup(dr.device_code);
+	s->interval = (long)dr.interval;
+	jsondestroy(drelems, nelem(drelems), &dr);
+	return r;
+}
+
+
+int
+deviceflow2(Fsstate *fss)
+{
+	char errbuf[ERRMAX];
+	JSON *j;
+	int r;
+	State *s;
+
+	s = fss->ps;
+	for(;;sleep(s->interval * 1000L)){
+		j = urlpost(disc.token_endpoint, s->client_id, s->client_secret,
+		            "grant_type", "urn:ietf:params:oauth:grant-type:device_code",
+		            "device_code", dr.device_code,
+		            nil);
+		if(j == nil){
+			/* check for special errors, don't give up yet */
+			rerrstr(errbuf, sizeof errbuf);
+			if(strstr(errbuf, "authorization_pending") != nil){
+				continue;
+			}
+			if(strstr(errbuf, "slow_down") != nil){
+				dr.interval += 5;
+				continue;
+			}
+			r = -1;
+			werrstr("urlpost token_endpoint: %r");
+			goto out;
+		}
+		break;
+	}
+	r = updatekey(k, j);
+	if(r < 0){
+		werrstr("updatekey: %r");
+		goto out;
+	}
+	r = 0;
+	out:
+	return r;
+}
+
 
 static int
 oauthinit(Proto *p, Fsstate *fss)
@@ -1455,18 +1438,41 @@ oauthinit(Proto *p, Fsstate *fss)
 	Key *k;
 	Keyinfo ki;
 	State *s;
+	int i;
+	char *refresh_token;
+	long exptime;
 
+	fmtinstall('U', urlencodefmt);
+	fmtinstall('J', JSONfmt);
 	ret = findkey(&k, mkkeyinfo(&ki, fss, nil), "%s", p->keyprompt);
 	if(ret != RpcOk)
 		return ret;
-	if(refresh(k) < 0){
-		return failure(fss, "refresh: %r");
-	}
-	setattrs(fss->attr, k->attr);
 	s = emalloc(sizeof(*s));
 	s->key = k;
+	s->disc = nil;
+	s->device_code = nil;
 	fss->ps = s;
+
+	for(i = 0; i < nelem(keyfields); i++)
+		*(char**)((char*)s + keyfields[i].off) = _strfindattr(k->attr, keyfields[i].name);
 	fss->phase = HaveToken;
+	if(s->exptime == nil || time(0) >= atol(s->exptime)){
+		/* our key is expired, try to get a new one */
+		if(discoveryget(s->issuer, &s->disc) < 0)
+			return failure(fss, "discoveryget: %r");
+		refresh_token = _strfindattr(k->privattr, "!refresh_token");
+		if(refresh_token){
+			if(refreshflow(&s->disc, k, s->issuer, s->scope, s->client_id, s->client_secret, refresh_token) < 0)
+				return failure(fss, "refreshflow: %r");
+			if(replacekey(k, 0) < 0)
+				return failure(fss, "replacekey: %r");
+		}else{
+			/* we have no refresh token, try the device flow */
+			fss->phase = NeedDeviceCode;
+		}
+	}
+
+	setattrs(fss->attr, k->attr);
 	return RpcOk;
 }
 
@@ -1478,6 +1484,10 @@ oauthclose(Fsstate *fss)
 	s = fss->ps;
 	if(s->key)
 		closekey(s->key);
+	if(s->disc)
+		jsondestroy(discelems, nelem(discelems), s->disc);
+	if(s->device_code)
+		free(s->device_code);
 	free(s);
 }
 
@@ -1493,7 +1503,18 @@ oauthread(Fsstate *fss, void *va, uint *n)
 	switch(fss->phase){
 	default:
 		return phaseerror(fss, "read");
-
+	case NeedDeviceCode:
+		if(deviceflow1(fss) < 0)
+			return failure(fss, "deviceflow1: %r");
+		fss->phase = NeedUserConsent;
+		return RpcNeedkey;
+	case NeedUserConsent:
+		if(deviceflow2(fss) < 0)
+			return failure(fss, "deviceflow2: %r");
+		if(replacekey(s->key, 0) < 0)
+			return failure(fss, "replacekey: %r");
+		fss->phase = HaveToken;
+		/* fallthrough */
 	case HaveToken:
 		access_token = _strfindattr(s->key->privattr, "!access_token");
 		if(access_token == nil)
@@ -1522,5 +1543,5 @@ Proto oauth =
 .read=		oauthread,
 .close=		oauthclose,
 .addkey=		replacekey,
-.keyprompt=	"issuer? scope? client_id? !refresh_token?",
+.keyprompt=	"issuer? scope? client_id?",
 };
