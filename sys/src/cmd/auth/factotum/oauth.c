@@ -1365,7 +1365,7 @@ deviceflow1(Fsstate *fss)
 	memset(&dr, 0, sizeof dr);
 
 	dr.interval = 5;
-	j = urlpost(s->disc->device_authorization_endpoint, nil, nil, "scope", s->scope, "client_id", s->client_id, nil);
+	j = urlpost(s->disc.device_authorization_endpoint, nil, nil, "scope", s->scope, "client_id", s->client_id, nil);
 	if(j == nil){
 		r = -1;
 		werrstr("urlpost device_authorization_endpoint: %r");
@@ -1401,7 +1401,7 @@ deviceflow2(Fsstate *fss)
 
 	s = fss->ps;
 	for(;;sleep(s->interval * 1000L)){
-		j = urlpost(disc.token_endpoint, s->client_id, s->client_secret,
+		j = urlpost(s->disc.token_endpoint, s->client_id, s->client_secret,
 		            "grant_type", "urn:ietf:params:oauth:grant-type:device_code",
 		            "device_code", s->device_code,
 		            nil);
