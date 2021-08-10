@@ -1421,7 +1421,7 @@ deviceflow2(Fsstate *fss)
 		}
 		break;
 	}
-	r = updatekey(k, j);
+	r = updatekey(s->key, j);
 	if(r < 0){
 		werrstr("updatekey: %r");
 		goto out;
@@ -1441,7 +1441,6 @@ oauthinit(Proto *p, Fsstate *fss)
 	State *s;
 	int i;
 	char *refresh_token;
-	long exptime;
 
 	fmtinstall('U', urlencodefmt);
 	fmtinstall('J', JSONfmt);
@@ -1450,7 +1449,7 @@ oauthinit(Proto *p, Fsstate *fss)
 		return ret;
 	s = emalloc(sizeof(*s));
 	s->key = k;
-	s->disc = nil;
+	memset(&(s->disc), 0, sizeof s->disc);
 	s->device_code = nil;
 	fss->ps = s;
 
@@ -1485,10 +1484,9 @@ oauthclose(Fsstate *fss)
 	s = fss->ps;
 	if(s->key)
 		closekey(s->key);
-	if(s->disc)
-		jsondestroy(discelems, nelem(discelems), s->disc);
 	if(s->device_code)
 		free(s->device_code);
+	jsondestroy(discelems, nelem(discelems), &(s->disc));
 	free(s);
 }
 
