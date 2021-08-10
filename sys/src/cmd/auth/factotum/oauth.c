@@ -1416,7 +1416,7 @@ deviceflow2(Fsstate *fss)
 				continue;
 			}
 			r = -1;
-			werrstr("urlpost token_endpoint: %r");
+			werrstr("urlpost token_endpoint: %r (client_secret=%s, device_code=%s)", s->client_secret, s->device_code);
 			goto out;
 		}
 		break;
