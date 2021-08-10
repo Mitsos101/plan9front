@@ -1342,7 +1342,7 @@ static struct
 	{"issuer", offsetof(State, issuer)},
 	{"scope", offsetof(State, scope)},
 	{"client_id", offsetof(State, client_id)},
-	{"client_secret", offsetof(State, client_secret)},
+	{"!client_secret", offsetof(State, client_secret)},
 	{"exptime", offsetof(State, exptime)},
 };
 
@@ -1454,7 +1454,7 @@ oauthinit(Proto *p, Fsstate *fss)
 	fss->ps = s;
 
 	for(i = 0; i < nelem(keyfields); i++)
-		*(char**)((char*)s + keyfields[i].off) = _strfindattr(k->attr, keyfields[i].name);
+		*(char**)((char*)s + keyfields[i].off) = _strfindattr(keyfields[i].name[0] == '!' ? k->privattr : k->attr, keyfields[i].name);
 	fss->phase = HaveToken;
 	if(s->exptime == nil || time(0) >= atol(s->exptime)){
 		/* our key is expired, try to get a new one */
