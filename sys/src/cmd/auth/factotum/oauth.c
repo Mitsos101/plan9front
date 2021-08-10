@@ -1321,6 +1321,7 @@ struct State
 	char *client_secret;
 	char *exptime;
 	char *device_code;
+	long interval;
 	Discovery disc;
 };
 
@@ -1364,7 +1365,7 @@ deviceflow1(Fsstate *fss)
 	memset(&dr, 0, sizeof dr);
 
 	dr.interval = 5;
-	j = urlpost(disc.device_authorization_endpoint, nil, nil, "scope", s->scope, "client_id", s->client_id, nil);
+	j = urlpost(s->disc->device_authorization_endpoint, nil, nil, "scope", s->scope, "client_id", s->client_id, nil);
 	if(j == nil){
 		r = -1;
 		werrstr("urlpost device_authorization_endpoint: %r");
@@ -1402,7 +1403,7 @@ deviceflow2(Fsstate *fss)
 	for(;;sleep(s->interval * 1000L)){
 		j = urlpost(disc.token_endpoint, s->client_id, s->client_secret,
 		            "grant_type", "urn:ietf:params:oauth:grant-type:device_code",
-		            "device_code", dr.device_code,
+		            "device_code", s->device_code,
 		            nil);
 		if(j == nil){
 			/* check for special errors, don't give up yet */
@@ -1411,7 +1412,7 @@ deviceflow2(Fsstate *fss)
 				continue;
 			}
 			if(strstr(errbuf, "slow_down") != nil){
-				dr.interval += 5;
+				s->interval += 5;
 				continue;
 			}
 			r = -1;
@@ -1458,11 +1459,11 @@ oauthinit(Proto *p, Fsstate *fss)
 	fss->phase = HaveToken;
 	if(s->exptime == nil || time(0) >= atol(s->exptime)){
 		/* our key is expired, try to get a new one */
-		if(discoveryget(s->issuer, &s->disc) < 0)
+		if(discoveryget(s->issuer, &(s->disc)) < 0)
 			return failure(fss, "discoveryget: %r");
 		refresh_token = _strfindattr(k->privattr, "!refresh_token");
 		if(refresh_token){
-			if(refreshflow(&s->disc, k, s->issuer, s->scope, s->client_id, s->client_secret, refresh_token) < 0)
+			if(refreshflow(&(s->disc), k, s->issuer, s->scope, s->client_id, s->client_secret, refresh_token) < 0)
 				return failure(fss, "refreshflow: %r");
 			if(replacekey(k, 0) < 0)
 				return failure(fss, "replacekey: %r");
