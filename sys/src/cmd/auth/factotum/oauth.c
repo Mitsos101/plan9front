@@ -1494,11 +1494,14 @@ static int
 oauthread(Fsstate *fss, void *va, uint *n)
 {
 	int m;
-	char buf[2048];
+	int size;
+	char *buf;
 	char *access_token;
 	State *s;
 
 	s = fss->ps;
+	size = 4096;
+	buf = emalloc(size);
 	switch(fss->phase){
 	default:
 		return phaseerror(fss, "read");
@@ -1518,12 +1521,15 @@ oauthread(Fsstate *fss, void *va, uint *n)
 		access_token = _strfindattr(s->key->privattr, "!access_token");
 		if(access_token == nil)
 			return failure(fss, "oauthread cannot happen");
-		snprint(buf, sizeof buf, "%q", access_token);
+		snprint(buf, size, "%q", access_token);
 		m = strlen(buf);
-		if(m > *n)
+		if(m > *n){
+			free(buf);
 			return toosmall(fss, m);
+		}
 		*n = m;
 		memmove(va, buf, m);
+		free(buf);
 		return RpcOk;
 	}
 }
