@@ -1444,6 +1444,7 @@ oauthinit(Proto *p, Fsstate *fss)
 
 	fmtinstall('U', urlencodefmt);
 	fmtinstall('J', JSONfmt);
+	fmtinstall('[', encodefmt);
 	ret = findkey(&k, mkkeyinfo(&ki, fss, nil), "%s", p->keyprompt);
 	if(ret != RpcOk)
 		return ret;
