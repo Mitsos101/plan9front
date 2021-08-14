@@ -3,7 +3,6 @@
 #		programs
 #
 TARG=\
-	amalgam\
 	as\
 	asaudit\
 	asn1dump\
@@ -13,7 +12,6 @@ TARG=\
 	convkeys\
 	cron\
 	debug\
-	deviceflow\
 	guard.srv\
 	httpauth\
 	keyfs\
