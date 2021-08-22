@@ -1311,6 +1311,177 @@ refreshflow(Discovery *disc, Key *k, char *issuer, char *scope, char *client_id,
 	return r;
 }
 
+enum
+{
+	Verifierlen = 100,
+	Statelen = 32,
+};
+
+int
+fillrandom(char *s, int n)
+{
+	int len;
+	char *pos;
+	char buf[256];
+	char buf2[256];
+
+	if(n % 4 != 0){
+		werrstr("length must be divisible by 4");
+		return -1;
+	}
+	len = (n / 4) * 3;
+
+	genrandom(buf, len);
+	snprint(buf2, sizeof buf2, "%.*[", len, buf);
+
+	if((pos = strchr(buf2, '=')) != nil)
+		*pos = '\0';
+	while((pos = strchr(buf2, '+')) != nil)
+		*pos = '-';
+	while((pos = strchr(buf2, '/')) != nil)
+		*pos = '_';
+
+	strcpy(s, buf2);
+
+	return 0;
+
+}
+
+int
+authcodeflow(Discovery *disc, Key *k, char *issuer, char *scope, char *client_id, char *client_secret)
+{
+	char verifier[Verifierlen + 1];
+	char hash[SHA2_256dlen];
+	char challenge[2 * (sizeof hash)];
+	char state[Statelen + 1];
+	char *pos;
+	char *s;
+	char *state2;
+	char *code;
+	JSON *j;
+	Plumbmsg pm;
+	Plumbmsg* pp;
+	Fmt fmt;
+	int wfd;
+	int ofd;
+	int r;
+	int i;
+
+
+	fmtstrinit(&fmt);
+	/* generate code verifier and state */
+	if(fillrandom(verifier, Verifierlen) < 0 || fillrandom(state, Statelen) < 0){
+		r = -1;
+		werrstr("fillrandom: %r");
+	}
+	verifier[Verifierlen] = '\0';
+	state[Statelen] = '\0';
+
+	sha2_256(verifier, Verifierlen, hash, nil);
+	snprint(challenge, sizeof challenge, "%.*[", sizeof hash, hash);
+
+	if((pos = strchr(challenge, '=')) != nil)
+		*pos = '\0';
+	while((pos = strchr(challenge, '+')) != nil)
+		*pos = '-';
+	while((pos = strchr(challenge, '/')) != nil)
+		*pos = '_';
+
+	fmtprint(&fmt, "%s?", disc->authorization_endpoint);
+	/* append client_id to url */
+	fmtprint(&fmt, "%U=%U", "client_id", client_id);
+	/* append redirect_uri to url */
+	fmtprint(&fmt, "&%U=%U", "redirect_uri", "http://127.0.0.1:4812"); /* it is difficult to register a scheme for the plumber */
+	/* append response_type to url */
+	fmtprint(&fmt, "&%U=%U", "response_type", "code");
+	/* append scope to url */
+	fmtprint(&fmt, "&%U=%U", "scope", scope);
+	/* append code_challenge to url */
+	fmtprint(&fmt, "&%U=%U", "code_challenge", challenge);
+	/* append code_challenge_method to url */
+	fmtprint(&fmt, "&%U=%U", "code_challenge_method", "S256");
+	/* append state to url */
+	fmtprint(&fmt, "&%U=%U", "state", state);
+
+
+	if((s = fmtstrflush(&fmt)) == nil){
+		werrstr("fmtstrflush: %r");
+		r = -1;
+		goto out;
+	}
+
+
+	/* plumb url to browser */
+	if((wfd = plumbopen("send", OWRITE)) < 0){
+		werrstr("plumbopen: %r");
+		r = -1;
+		goto out;
+	}
+
+	pm = (Plumbmsg){"oauth", "web", nil, "text", nil, strlen(s), s};
+
+	if(plumbsend(wfd, &pm) < 0){
+		werrstr("plumbsend: %r");
+		r = -1;
+		goto out;
+	}
+
+	/* how do you close wfd? */
+
+	/* listen for response on plumb */
+	if((ofd = plumbopen("oauth", OREAD)) < 0){
+		werrstr("plumbopen: %r");
+		r = -1;
+		goto out;
+	}
+
+	while((pp = plumbrecv(ofd)) != nil){
+		if((state2 = plumblookup(pp->attr, "state")) == nil
+		|| (code = plumblookup(pp->attr, "code")) == nil
+		|| strcmp(state, state2) != 0){
+			plumbfree(pp);
+			continue;
+		}
+		j = urlpost(disc->token_endpoint, client_id, client_secret,
+					"code", code,
+					"code_verifier", verifier,
+					"redirect_uri", "http://127.0.0.1:4812",
+					"grant_type", "authorization_code",
+					nil);
+
+		if(j == nil){
+			werrstr("urlpost: %r");
+			plumbfree(pp);
+			r = -1
+			goto out;
+		}
+
+		if(updatekey(k, j) < 0){
+			werrstr("updatekey: %r");
+			jsonfree(j);
+			plumbfree(pp);
+			r = -1;
+			goto out;
+		}
+		jsonfree(j);
+		plumbfree(pp);
+		break;
+	}
+
+	if(pp == nil){
+		werrstr("plumbrecv: %r");
+		r = -1;
+		goto out;
+	}
+
+
+	r = 0;
+	out:
+	jsondestroy(discelems, nelem(discelems), &disc);
+	return r;
+}
+
+
 typedef struct State State;
 struct State
 {
@@ -1321,6 +1492,7 @@ struct State
 	char *client_secret;
 	char *exptime;
 	char *device_code;
+	char *flow;
 	long interval;
 	Discovery disc;
 };
@@ -1344,6 +1516,7 @@ static struct
 	{"client_id", offsetof(State, client_id)},
 	{"!client_secret", offsetof(State, client_secret)},
 	{"exptime", offsetof(State, exptime)},
+	{"flow", offsetof(State, flow)},
 };
 
 static char *phasenames[Maxphase] =
@@ -1467,7 +1640,13 @@ oauthinit(Proto *p, Fsstate *fss)
 				return failure(fss, "refreshflow: %r");
 			if(replacekey(k, 0) < 0)
 				return failure(fss, "replacekey: %r");
-		}else{
+		}else if(s->flow && strcmp(s->flow, "auth") == 0){
+			/* we have no refresh token, try the authorization code flow */
+			if(authcodeflow(&(s->disc), k, s->issuer, s->scope, s->client_id, s->client_secret) < 0)
+				return failure(fss, "authcodeflow: %r");
+			if(replacekey(k, 0) < 0)
+				return failure(fss, "replacekey: %r");
+		} else{
 			/* we have no refresh token, try the device flow */
 			fss->phase = NeedDeviceCode;
 		}
