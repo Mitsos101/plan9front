@@ -399,7 +399,7 @@ typedef struct UserPasswd {
 .EE
 .PP
 .I Auth_getoauth
-retrieves a user/password pair from
+retrieves an OAuth access token from
 .I factotum
 if permitted:
 .IP
