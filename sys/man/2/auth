@@ -1,6 +1,6 @@
 .TH AUTH 2
 .SH NAME
-amount, newns, addns, login, noworld, procsetuser, auth_proxy, fauth_proxy, auth_allocrpc, auth_freerpc, auth_rpc, auth_getkey, amount_getkey, auth_freeAI, auth_chuid, auth_challenge, auth_response, auth_freechal, auth_respond, auth_respondAI, auth_userpasswd, auth_getuserpasswd, auth_getinfo \- routines for authenticating users
+amount, newns, addns, login, noworld, procsetuser, auth_proxy, fauth_proxy, auth_allocrpc, auth_freerpc, auth_rpc, auth_getkey, amount_getkey, auth_freeAI, auth_chuid, auth_challenge, auth_response, auth_freechal, auth_respond, auth_respondAI, auth_userpasswd, auth_getuserpasswd, auth_getoauth, auth_getinfo \- routines for authenticating users
 .SH SYNOPSIS
 .nf
 .PP
@@ -78,6 +78,9 @@ AuthInfo*	auth_userpasswd(char*user, char*password);
 .PP
 .B
 UserPasswd*	auth_getuserpasswd(AuthGetkey *getkey, char*fmt, ...);
+.PP
+.B
+OAuth*	auth_getoauth(AuthGetkey *getkey, char*fmt, ...);
 .PP
 .B
 AuthInfo*	auth_getinfo(AuthRpc*);
@@ -393,6 +396,19 @@ typedef struct UserPasswd {
 	char	*user;
 	char	*passwd;
 } UserPasswd;
+.EE
+.PP
+.I Auth_getoauth
+retrieves a user/password pair from
+.I factotum
+if permitted:
+.IP
+.ne 8
+.EX
+.ta 4n +4n +4n +4n +4n +4n +4n +4n +4n
+typedef struct OAuth {
+	char	*access_token;
+} OAuth;
 .EE
 .PP
 .I Auth_getinfo
