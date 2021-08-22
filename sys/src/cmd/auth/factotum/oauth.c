@@ -5,6 +5,8 @@
 
 #define USER_AGENT    "oauthtest"
 
+
+#pragma varargck type "U" char*
 int	urlencodefmt(Fmt*);
 
 // Wrapper to hide whether we're using OpenSSL or macOS' libNetwork for HTTPS.
