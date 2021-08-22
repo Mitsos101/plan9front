@@ -1,5 +1,6 @@
 #include "dat.h"
 #include <json.h>
+#include <plumb.h>
 #include <ctype.h>
 
 #define USER_AGENT    "oauthtest"
@@ -160,12 +161,6 @@ Protocol https = {
 	httpread,
 	httpwrite,
 	httpclose,
-};
-
-enum
-{
-	Verifierlen = 100,
-	Statelen = 32,
 };
 
 typedef struct Elem Elem;
@@ -1367,7 +1362,8 @@ authcodeflow(Discovery *disc, Key *k, char *issuer, char *scope, char *client_id
 	int r;
 	int i;
 
-
+	wfd = -1;
+	ofd = -1;
 	fmtstrinit(&fmt);
 	/* generate code verifier and state */
 	if(fillrandom(verifier, Verifierlen) < 0 || fillrandom(state, Statelen) < 0){
@@ -1426,8 +1422,6 @@ authcodeflow(Discovery *disc, Key *k, char *issuer, char *scope, char *client_id
 		goto out;
 	}
 
-	/* how do you close wfd? */
-
 	/* listen for response on plumb */
 	if((ofd = plumbopen("oauth", OREAD)) < 0){
 		werrstr("plumbopen: %r");
@@ -1477,6 +1471,8 @@ authcodeflow(Discovery *disc, Key *k, char *issuer, char *scope, char *client_id
 
 	r = 0;
 	out:
+	if(wfd >= 0) close(wfd);
+	if(ofd >= 0) close(ofd);
 	jsondestroy(discelems, nelem(discelems), &disc);
 	return r;
 }
