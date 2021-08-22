@@ -1326,7 +1326,7 @@ fillrandom(char *s, int n)
 	}
 	len = (n / 4) * 3;
 
-	genrandom(buf, len);
+	genrandom((uchar*)buf, len);
 	snprint(buf2, sizeof buf2, "%.*[", len, buf);
 
 	if((pos = strchr(buf2, '=')) != nil)
@@ -1373,7 +1373,7 @@ authcodeflow(Discovery *disc, Key *k, char *issuer, char *scope, char *client_id
 	verifier[Verifierlen] = '\0';
 	state[Statelen] = '\0';
 
-	sha2_256(verifier, Verifierlen, hash, nil);
+	sha2_256((uchar*)verifier, Verifierlen, hash, nil);
 	snprint(challenge, sizeof challenge, "%.*[", sizeof hash, hash);
 
 	if((pos = strchr(challenge, '=')) != nil)
@@ -1446,7 +1446,7 @@ authcodeflow(Discovery *disc, Key *k, char *issuer, char *scope, char *client_id
 		if(j == nil){
 			werrstr("urlpost: %r");
 			plumbfree(pp);
-			r = -1
+			r = -1;
 			goto out;
 		}
 
