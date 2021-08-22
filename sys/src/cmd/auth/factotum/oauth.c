@@ -1369,11 +1369,12 @@ authcodeflow(Discovery *disc, Key *k, char *issuer, char *scope, char *client_id
 	if(fillrandom(verifier, Verifierlen) < 0 || fillrandom(state, Statelen) < 0){
 		r = -1;
 		werrstr("fillrandom: %r");
+		goto out;
 	}
 	verifier[Verifierlen] = '\0';
 	state[Statelen] = '\0';
 
-	sha2_256((uchar*)verifier, Verifierlen, hash, nil);
+	sha2_256((uchar*)verifier, Verifierlen, (uchar*)hash, nil);
 	snprint(challenge, sizeof challenge, "%.*[", sizeof hash, hash);
 
 	if((pos = strchr(challenge, '=')) != nil)
