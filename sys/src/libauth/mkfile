@@ -9,6 +9,7 @@ OFILES=\
 	auth_challenge.$O\
 	auth_chuid.$O\
 	auth_getkey.$O\
+	auth_getoauth.$O\
 	auth_getuserpasswd.$O\
 	auth_proxy.$O\
 	auth_respond.$O\

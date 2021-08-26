@@ -19,6 +19,7 @@ TARG=\
 	netkey\
 	newns\
 	none\
+	oauth\
 	passwd\
 	pemdecode\
 	pemencode\

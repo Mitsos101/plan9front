@@ -326,7 +326,7 @@ hline(Hconn *h, char *data, int len, int cont)
 						h->len -= y - x;
 						continue;
 					}
-				}			
+				}
 				if(n < len)
 					len = n;
 				memmove(data, h->buf, len);
@@ -412,6 +412,18 @@ authenticate(Url *u, Url *ru, char *method, char *s)
 		memset(s, 0, n);
 		free(s);
 		u = saneurl(url(".", u));	/* all uris below the requested one */
+	}else
+	if(!cistrncmp(s, "Bearer ", 7)){
+		OAuth *o;
+
+		s += 7;
+		o = auth_getoauth(hauthgetkey, "proto=oauth server=%q", u->host);
+		if(o == nil)
+			return -1;
+		fmtstrinit(&fmt);
+		fmtprint(&fmt, "Bearer %s", o->access_token);
+		free(o);
+		u = saneurl(url(".", u)); /* all uris below the requested one */
 	}else
 	if(!cistrncmp(s, "Digest ", 7)){
 		char chal[1024], ouser[128], resp[2*MD5LEN+1];
@@ -775,7 +787,7 @@ http(char *m, Url *u, Key *shdr, Buq *qbody, Buq *qpost)
 				if(cistrstr(k->val, "chunked"))
 					chunked = 1;
 			}
-			else if(!cistrcmp(k->key, "Set-Cookie") || 
+			else if(!cistrcmp(k->key, "Set-Cookie") ||
 				!cistrcmp(k->key, "Set-Cookie2")){
 				if(cfd >= 0)
 					fprint(cfd, "Set-Cookie: %s\n", k->val);

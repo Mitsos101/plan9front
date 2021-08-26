@@ -10,6 +10,7 @@ typedef struct	Chalstate	Chalstate;
 typedef struct	Chapreply	Chapreply;
 typedef struct	MSchapreply	MSchapreply;
 typedef struct	UserPasswd	UserPasswd;
+typedef struct	OAuth		OAuth;
 typedef struct	AuthRpc		AuthRpc;
 
 enum
@@ -84,6 +85,12 @@ struct	UserPasswd
 	char	*passwd;
 };
 
+struct	OAuth
+{
+	char	*access_token;
+};
+
+
 extern	int	newns(char*, char*);
 extern	int	addns(char*, char*);
 
@@ -133,6 +140,7 @@ extern int		auth_respondAI(void *, uint, char*, uint, void*, uint, AuthInfo**, A
 extern void		auth_freechal(Chalstate*);
 extern AuthInfo*	auth_userpasswd(char *user, char *passwd);
 extern UserPasswd*	auth_getuserpasswd(AuthGetkey *getkey, char*, ...);
+extern OAuth*	auth_getoauth(AuthGetkey *getkey, char*, ...);
 extern AuthInfo*	auth_getinfo(AuthRpc *rpc);
 extern AuthRpc*		auth_allocrpc(int afd);
 extern Attr*		auth_attr(AuthRpc *rpc);
@@ -143,3 +151,5 @@ extern uint		auth_rpc(AuthRpc *rpc, char *verb, void *a, int n);
 #pragma varargck argpos auth_respond 8
 #pragma varargck argpos auth_respondAI 9
 #pragma varargck argpos auth_getuserpasswd 2
+#pragma varargck argpos auth_getoauth 2
+

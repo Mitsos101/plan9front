@@ -57,7 +57,7 @@ struct Fsstate
 		char *arg, buf[Maxrpc], *verb;
 		int iverb, narg, nbuf, nwant;
 	} rpc;
-	
+
 	/* persistent (cross-rpc) information */
 	char err[ERRMAX];
 	char keyinfo[3*Maxname];	/* key request */
@@ -228,3 +228,4 @@ extern Proto rsa;			/* rsa.c */
 extern Proto httpdigest;		/* httpdigest.c */
 extern Proto ecdsa;			/* ecdsa.c */
 extern Proto wpapsk;			/* wpapsk.c */
+extern Proto oauth;			/* oauth.c */

@@ -107,7 +107,7 @@ newclient(void)
 	cl->url = nil;
 	cl->hdr = nil;
 	cl->qbody = nil;
-	
+
 	return cl;
 }
 
@@ -392,7 +392,7 @@ fsopen(Req *r)
 			if(f->level != Qbody){
 				f->buq = bualloc(64*1024);
 				if(!lookkey(cl->hdr, "Content-Type"))
-					cl->hdr = addkey(cl->hdr, "Content-Type", 
+					cl->hdr = addkey(cl->hdr, "Content-Type",
 						"application/x-www-form-urlencoded");
 				m = "POST";
 			} else
@@ -583,6 +583,27 @@ rootctl(Srv *fs, char *ctl, char *arg)
 			return "preauth failed";
 		return nil;
 	}
+	/* preemptive authentication for oauth
+	 * ctl message of the form:
+	 *	preoauth url (url is api server, not issuer)
+	 */
+	if(!strcmp(ctl, "preoauth")){
+		char *a[2], buf[256];
+		int rc;
+
+		if(tokenize(arg, a, nelem(a)) != 1)
+			return "preoauth - bad field count";
+		if((u = saneurl(url(a[0], 0))) == nil)
+			return "preoauth - malformed url";
+		snprint(buf, sizeof(buf), "BEARER "); /* needs an extra space at the end */
+		srvrelease(fs);
+		rc = authenticate(u, u, "GET", buf);
+		srvacquire(fs);
+		freeurl(u);
+		if(rc == -1)
+			return "preoauth failed";
+		return nil;
+	}
 
 	return "bad ctl message";
 }
@@ -736,7 +757,7 @@ fsend(Srv*)
 	exits(nil);
 }
 
-Srv fs = 
+Srv fs =
 {
 	.start=fsstart,
 	.attach=fsattach,
